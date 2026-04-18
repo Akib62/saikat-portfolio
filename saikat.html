@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAIKAT — Digital Experiences</title>
+
+    <!-- Fonts: Syncopate (display) + Space Grotesk (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- GSAP + ScrollTrigger -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+    <!-- Lenis Smooth Scroll -->
+    <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bg: '#0a0a0a',
+                        fg: '#e8e6e3',
+                        muted: '#6b6b6b',
+                        accent: '#c8ff00',
+                        card: '#111111',
+                        border: '#1c1c1c',
+                    },
+                    fontFamily: {
+                        display: ['Syncopate', 'sans-serif'],
+                        body: ['Space Grotesk', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --fg: #e8e6e3;
+            --muted: #6b6b6b;
+            --accent: #c8ff00;
+            --card: #111111;
+            --border: #1c1c1c;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { background: var(--bg); }
+
+        body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        ::selection { background: var(--accent); color: var(--bg); }
+        ::-webkit-scrollbar { width: 0; }
+
+        /* ── Preloader ── */
+        .preloader {
+            position: fixed; inset: 0; background: var(--bg);
+            z-index: 10000; display: flex; align-items: center;
+            justify-content: center; flex-direction: column; gap: 2rem;
+        }
+        .preloader-word { overflow: hidden; }
+        .preloader-word span {
+            display: block; transform: translateY(110%);
+            font-family: 'Syncopate', sans-serif;
+            font-size: clamp(1.8rem, 7vw, 5rem); font-weight: 700;
+            letter-spacing: 0.15em;
+        }
+        .preloader-bar-track {
+            width: 200px; height: 1px; background: var(--border);
+            position: relative; overflow: hidden;
+        }
+        .preloader-bar-fill {
+            position: absolute; top: 0; left: 0;
+            height: 100%; width: 0%; background: var(--accent);
+        }
+        .preloader-counter {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 0.85rem; letter-spacing: 0.2em; color: var(--muted);
+        }
+
+        /* ── Custom Cursor ── */
+        .cursor-dot {
+            width: 6px; height: 6px; background: var(--accent);
+            border-radius: 50%; position: fixed; top: 0; left: 0;
+            pointer-events: none; z-index: 9999;
+            transform: translate(-50%, -50%);
+            mix-blend-mode: difference;
+        }
+        .cursor-ring {
+            width: 40px; height: 40px;
+            border: 1px solid rgba(200,255,0,0.5);
+            border-radius: 50%; position: fixed; top: 0; left: 0;
+            pointer-events: none; z-index: 9998;
+            transform: translate(-50%, -50%);
+            transition: width 0.35s cubic-bezier(.25,.46,.45,.94),
+                        height 0.35s cubic-bezier(.25,.46,.45,.94),
+                        border-color 0.35s, background 0.35s;
+        }
+        .cursor-ring.hovering {
+            width: 70px; height: 70px;
+            background: rgba(200,255,0,0.08);
+            border-color: var(--accent);
+        }
+
+        /* ── Noise Overlay ── */
+        .noise {
+            position: fixed; inset: 0; pointer-events: none;
+            z-index: 9990; opacity: 0.035;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        /* ── Reveal helpers ── */
+        .word-reveal { overflow: hidden; display: inline-block; }
+        .word-reveal span { display: inline-block; transform: translateY(105%); }
+        .line-reveal { overflow: hidden; }
+        .line-reveal > * { transform: translateY(105%); }
+
+        /* ── Hero ── */
+        .hero-line {
+            font-family: 'Syncopate', sans-serif;
+            font-weight: 700; line-height: 0.92;
+            letter-spacing: -0.03em;
+            overflow: hidden;
+        }
+        .hero-line span { display: inline-block; transform: translateY(105%); }
+        .hero-line-sm {
+            font-size: clamp(0.7rem, 1.5vw, 1rem);
+            letter-spacing: 0.3em; color: var(--muted);
+        }
+        .hero-line-lg {
+            font-size: clamp(3rem, 11vw, 11rem);
+        }
+
+        /* ── Marquee ── */
+        .marquee-track {
+            display: flex; width: max-content;
+            animation: marquee 25s linear infinite;
+        }
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* ── Project Cards ── */
+        .project-card { position: relative; overflow: hidden; }
+        .project-card .img-wrap { overflow: hidden; }
+        .project-card img {
+            transition: transform 1s cubic-bezier(.25,.46,.45,.94);
+            will-change: transform; scale: 1.15;
+        }
+        .project-card:hover img { transform: scale(1); }
+        .project-card .card-overlay {
+            position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(10,10,10,0.85) 0%, transparent 60%);
+            opacity: 0; transition: opacity 0.5s;
+        }
+        .project-card:hover .card-overlay { opacity: 1; }
+        .project-card .card-info {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 2rem; transform: translateY(20px);
+            opacity: 0; transition: all 0.5s cubic-bezier(.25,.46,.45,.94);
+        }
+        .project-card:hover .card-info { transform: translateY(0); opacity: 1; }
+
+        /* ── Horizontal Scroll ── */
+        .horizontal-section { overflow: hidden; }
+        .h-track { display: flex; width: fit-content; will-change: transform; }
+        .h-panel {
+            width: 100vw; height: 100vh; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            padding: 4rem; position: relative;
+        }
+        .h-panel-inner {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 4rem; max-width: 1200px; width: 100%; align-items: center;
+        }
+
+        /* ── Service Items ── */
+        .service-row {
+            border-bottom: 1px solid var(--border);
+            padding: 1.75rem 0; display: flex;
+            align-items: center; justify-content: space-between;
+            transition: padding-left 0.4s, border-color 0.4s;
+        }
+        .service-row:hover {
+            padding-left: 1.5rem;
+            border-color: var(--accent);
+        }
+        .service-row .svc-arrow {
+            transform: translateX(-12px); opacity: 0;
+            transition: all 0.4s cubic-bezier(.25,.46,.45,.94);
+        }
+        .service-row:hover .svc-arrow { transform: translateX(0); opacity: 1; }
+
+        /* ── Nav link hover ── */
+        .nav-link { position: relative; overflow: hidden; }
+        .nav-link .nl-top { transition: transform 0.4s cubic-bezier(.76,0,.24,1); }
+        .nav-link .nl-bot {
+            position: absolute; top: 0; left: 0;
+            transform: translateY(105%);
+            transition: transform 0.4s cubic-bezier(.76,0,.24,1);
+        }
+        .nav-link:hover .nl-top { transform: translateY(-105%); }
+        .nav-link:hover .nl-bot { transform: translateY(0); }
+
+        /* ── Menu Overlay ── */
+        .menu-overlay {
+            position: fixed; inset: 0; background: var(--bg);
+            z-index: 9000; display: flex; align-items: center;
+            justify-content: center;
+            clip-path: circle(0% at calc(100% - 3rem) 2.5rem);
+            transition: clip-path 0.8s cubic-bezier(.76,0,.24,1);
+            pointer-events: none;
+        }
+        .menu-overlay.open {
+            clip-path: circle(150% at calc(100% - 3rem) 2.5rem);
+            pointer-events: all;
+        }
+        .menu-overlay .mi { overflow: hidden; }
+        .menu-overlay .mi-inner {
+            transform: translateY(105%);
+            transition: transform 0.7s cubic-bezier(.76,0,.24,1);
+        }
+        .menu-overlay.open .mi-inner { transform: translateY(0); }
+
+        /* ── Scroll Indicator ── */
+        .scroll-indicator {
+            animation: scrollBounce 2s ease-in-out infinite;
+        }
+        @keyframes scrollBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(10px); }
+        }
+
+        /* ── Stat glow ── */
+        .stat-glow {
+            position: absolute; width: 200px; height: 200px;
+            border-radius: 50%; filter: blur(80px);
+            background: var(--accent); opacity: 0.08;
+            pointer-events: none;
+        }
+
+        /* ── Footer link ── */
+        .flink { position: relative; display: inline-block; }
+        .flink::after {
+            content: ''; position: absolute; bottom: -2px; left: 0;
+            width: 0; height: 1px; background: var(--accent);
+            transition: width 0.4s cubic-bezier(.25,.46,.45,.94);
+        }
+        .flink:hover::after { width: 100%; }
+
+        /* ── Image load ── */
+        .lazy-img { opacity: 0; transition: opacity 0.8s; }
+        .lazy-img.loaded { opacity: 1; }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .cursor-dot, .cursor-ring { display: none !important; }
+            body { cursor: auto; }
+            .h-panel-inner { grid-template-columns: 1fr !important; gap: 2rem !important; }
+            .h-panel { padding: 2rem !important; }
+            .service-row { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+            .marquee-track { animation: none !important; }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Preloader -->
+    <div class="preloader" id="preloader">
+        <div class="preloader-word"><span>SAIKAT</span></div>
+        <div class="preloader-bar-track"><div class="preloader-bar-fill" id="preloaderBar"></div></div>
+        <div class="preloader-counter" id="preloaderCount">0%</div>
+    </div>
+
+    <!-- Custom Cursor -->
+    <div class="cursor-dot" id="cursorDot"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+
+    <!-- Noise Overlay -->
+    <div class="noise" aria-hidden="true"></div>
+
+    <!-- Menu Overlay -->
+    <div class="menu-overlay" id="menuOverlay" role="dialog" aria-label="Navigation menu">
+        <nav class="text-center space-y-6">
+            <div class="mi"><div class="mi-inner" style="transition-delay:0.05s"><a href="#work" class="font-display text-4xl md:text-6xl font-bold tracking-wider hover:text-accent transition-colors" onclick="closeMenu()">WORK</a></div></div>
+            <div class="mi"><div class="mi-inner" style="transition-delay:0.1s"><a href="#about" class="font-display text-4xl md:text-6xl font-bold tracking-wider hover:text-accent transition-colors" onclick="closeMenu()">ABOUT</a></div></div>
+            <div class="mi"><div class="mi-inner" style="transition-delay:0.15s"><a href="#services" class="font-display text-4xl md:text-6xl font-bold tracking-wider hover:text-accent transition-colors" onclick="closeMenu()">SERVICES</a></div></div>
+            <div class="mi"><div class="mi-inner" style="transition-delay:0.2s"><a href="#contact" class="font-display text-4xl md:text-6xl font-bold tracking-wider hover:text-accent transition-colors" onclick="closeMenu()">CONTACT</a></div></div>
+            <div class="mi mt-12"><div class="mi-inner" style="transition-delay:0.3s"><p class="text-muted text-sm tracking-widest">HELLO@SAIKAT.COM</p></div></div>
+        </nav>
+    </div>
+
+    <!-- ═══════════ MAIN CONTENT ═══════════ -->
+    <main id="mainContent" style="opacity:0">
+
+        <!-- Navigation -->
+        <header class="fixed top-0 left-0 w-full z-[8000] mix-blend-difference" role="banner">
+            <div class="flex items-center justify-between px-6 md:px-12 py-6">
+                <a href="#" class="font-display text-sm md:text-base font-bold tracking-[0.2em] text-fg" aria-label="SAIKAT home">SAIKAT</a>
+                <div class="hidden md:flex items-center gap-10">
+                    <a href="#work" class="nav-link text-xs tracking-[0.2em] text-fg uppercase">
+                        <span class="nl-top">Work</span><span class="nl-bot text-accent">Work</span>
+                    </a>
+                    <a href="#about" class="nav-link text-xs tracking-[0.2em] text-fg uppercase">
+                        <span class="nl-top">About</span><span class="nl-bot text-accent">About</span>
+                    </a>
+                    <a href="#services" class="nav-link text-xs tracking-[0.2em] text-fg uppercase">
+                        <span class="nl-top">Services</span><span class="nl-bot text-accent">Services</span>
+                    </a>
+                    <a href="#contact" class="nav-link text-xs tracking-[0.2em] text-fg uppercase">
+                        <span class="nl-top">Contact</span><span class="nl-bot text-accent">Contact</span>
+                    </a>
+                </div>
+                <button id="menuBtn" class="w-10 h-10 flex flex-col items-end justify-center gap-1.5 md:hidden" aria-label="Open menu" onclick="toggleMenu()">
+                    <span class="block w-7 h-[1px] bg-fg transition-all origin-center" id="menuLine1"></span>
+                    <span class="block w-5 h-[1px] bg-fg transition-all" id="menuLine2"></span>
+                </button>
+                <button class="hidden md:block text-xs tracking-[0.2em] text-fg uppercase hover:text-accent transition-colors cursor-none" onclick="toggleMenu()" aria-label="Open menu">MENU +</button>
+            </div>
+        </header>
+
+        <!-- ── Hero Section ── -->
+        <section class="relative h-screen flex flex-col justify-center px-6 md:px-12" aria-label="Hero">
+            <div class="mb-4">
+                <div class="hero-line hero-line-sm"><span>WE CREATE</span></div>
+            </div>
+            <div>
+                <div class="hero-line hero-line-lg"><span>DIGITAL</span></div>
+            </div>
+            <div>
+                <div class="hero-line hero-line-lg"><span>EXPERIENCES</span></div>
+            </div>
+            <div class="mt-8 md:mt-12 max-w-md line-reveal">
+                <p class="text-muted text-sm md:text-base leading-relaxed">Award-winning digital agency crafting immersive web experiences through design, code, and motion.</p>
+            </div>
+
+            <!-- Scroll Indicator -->
+            <div class="absolute bottom-10 left-6 md:left-12 flex items-center gap-3 scroll-indicator">
+                <div class="w-[1px] h-12 bg-border relative overflow-hidden">
+                    <div class="w-full h-1/2 bg-accent absolute top-0 animate-pulse"></div>
+                </div>
+                <span class="text-[0.65rem] tracking-[0.3em] text-muted uppercase">Scroll</span>
+            </div>
+
+            <!-- Year tag -->
+            <div class="absolute bottom-10 right-6 md:right-12">
+                <span class="text-[0.65rem] tracking-[0.3em] text-muted uppercase">2024</span>
+            </div>
+        </section>
+
+        <!-- ── Marquee ── -->
+        <section class="py-8 border-t border-b border-border overflow-hidden" aria-hidden="true">
+            <div class="marquee-track">
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DESIGN</span>
+                <span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DEVELOP</span>
+                <span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DELIVER</span>
+                <span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">ITERATE</span>
+                <span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DESIGN</span>
+                <span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DEVELOP</span>
+                <span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DELIVER</span>
+                <span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">ITERATE</span>
+                <span class="text-accent mx-4">&#9670;</span>
+            </div>
+        </section>
+
+        <!-- ── Projects Grid ── -->
+        <section id="work" class="px-6 md:px-12 py-24 md:py-40" aria-label="Selected work">
+            <div class="flex items-end justify-between mb-16 md:mb-24">
+                <div>
+                    <span class="tag block mb-4 reveal-anim">Selected Work</span>
+                    <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight line-reveal">FEATURED<br>PROJECTS</h2>
+                </div>
+                <span class="hidden md:block text-muted text-sm tracking-widest reveal-anim">2021 — 2024</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                <!-- Project 1 -->
+                <div class="project-card group reveal-anim" data-cursor="view">
+                    <div class="img-wrap aspect-[4/5]">
+                        <img src="https://picsum.photos/seed/SAIKAT-proj1/800/1000" alt="Meridian project" class="lazy-img w-full h-full object-cover" loading="lazy">
+                    </div>
+                    <div class="card-overlay"></div>
+                    <div class="card-info">
+                        <span class="text-accent text-xs tracking-[0.2em] uppercase block mb-2">Brand / Web</span>
+                        <h3 class="font-display text-xl md:text-2xl font-bold tracking-wider">MERIDIAN</h3>
+                    </div>
+                </div>
+
+                <!-- Project 2 -->
+                <div class="project-card group reveal-anim" data-cursor="view">
+                    <div class="img-wrap aspect-[4/5] md:mt-24">
+                        <img src="https://picsum.photos/seed/SAIKAT-proj2/800/1000" alt="Nexus project" class="lazy-img w-full h-full object-cover" loading="lazy">
+                    </div>
+                    <div class="card-overlay"></div>
+                    <div class="card-info">
+                        <span class="text-accent text-xs tracking-[0.2em] uppercase block mb-2">Development / UI</span>
+                        <h3 class="font-display text-xl md:text-2xl font-bold tracking-wider">NEXUS</h3>
+                    </div>
+                </div>
+
+                <!-- Project 3 - Full width -->
+                <div class="project-card group md:col-span-2 reveal-anim" data-cursor="view">
+                    <div class="img-wrap aspect-[16/7]">
+                        <img src="https://picsum.photos/seed/SAIKAT-proj3/1600/700" alt="Aether project" class="lazy-img w-full h-full object-cover" loading="lazy">
+                    </div>
+                    <div class="card-overlay"></div>
+                    <div class="card-info">
+                        <span class="text-accent text-xs tracking-[0.2em] uppercase block mb-2">Motion / Experience</span>
+                        <h3 class="font-display text-xl md:text-2xl font-bold tracking-wider">AETHER</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Horizontal Scroll Section ── -->
+        <section class="horizontal-section" aria-label="Case studies">
+            <div class="h-track" id="hTrack">
+                <!-- Panel 1 -->
+                <div class="h-panel">
+                    <div class="h-panel-inner">
+                        <div>
+                            <span class="tag block mb-6">Case Study 01</span>
+                            <h3 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">PRISM<br>COLLECTIVE</h3>
+                            <p class="text-muted text-sm md:text-base leading-relaxed max-w-sm">A digital-first brand identity for a contemporary art collective pushing the boundaries of generative design and interactive installations.</p>
+                        </div>
+                        <div class="overflow-hidden rounded-sm">
+                            <img src="https://picsum.photos/seed/SAIKAT-h1/700/500" alt="Prism Collective" class="lazy-img w-full h-auto object-cover" loading="lazy">
+                        </div>
+                    </div>
+                </div>
+                <!-- Panel 2 -->
+                <div class="h-panel">
+                    <div class="h-panel-inner">
+                        <div>
+                            <span class="tag block mb-6">Case Study 02</span>
+                            <h3 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">SONIC<br>LABORATORIES</h3>
+                            <p class="text-muted text-sm md:text-base leading-relaxed max-w-sm">An immersive web experience for an audio technology company, featuring real-time audio visualization and spatial sound design.</p>
+                        </div>
+                        <div class="overflow-hidden rounded-sm">
+                            <img src="https://picsum.photos/seed/SAIKAT-h2/700/500" alt="Sonic Laboratories" class="lazy-img w-full h-auto object-cover" loading="lazy">
+                        </div>
+                    </div>
+                </div>
+                <!-- Panel 3 -->
+                <div class="h-panel">
+                    <div class="h-panel-inner">
+                        <div>
+                            <span class="tag block mb-6">Case Study 03</span>
+                            <h3 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">VERTICAL<br>STUDIOS</h3>
+                            <p class="text-muted text-sm md:text-base leading-relaxed max-w-sm">A comprehensive digital platform for an architecture firm, combining portfolio presentation with project management tools.</p>
+                        </div>
+                        <div class="overflow-hidden rounded-sm">
+                            <img src="https://picsum.photos/seed/SAIKAT-h3/700/500" alt="Vertical Studios" class="lazy-img w-full h-auto object-cover" loading="lazy">
+                        </div>
+                    </div>
+                </div>
+                <!-- Panel 4 -->
+                <div class="h-panel">
+                    <div class="h-panel-inner">
+                        <div>
+                            <span class="tag block mb-6">Case Study 04</span>
+                            <h3 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">FLUX<br>DYNAMICS</h3>
+                            <p class="text-muted text-sm md:text-base leading-relaxed max-w-sm">A high-performance e-commerce experience for a sustainable fashion brand, with WebGL product configurators and fluid transitions.</p>
+                        </div>
+                        <div class="overflow-hidden rounded-sm">
+                            <img src="https://picsum.photos/seed/SAIKAT-h4/700/500" alt="Flux Dynamics" class="lazy-img w-full h-auto object-cover" loading="lazy">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── About / Manifesto ── -->
+        <section id="about" class="px-6 md:px-12 py-32 md:py-48" aria-label="About">
+            <div class="max-w-5xl">
+                <span class="tag block mb-10 reveal-anim">Our Philosophy</span>
+                <p class="font-display text-2xl md:text-5xl font-bold leading-[1.15] tracking-tight word-reveal-text" id="manifestoText">
+                    We believe in the power of digital craft. Every pixel, every interaction, every frame of motion is an opportunity to create something meaningful. We don't just build websites — we architect experiences that resonate, inspire, and endure.
+                </p>
+            </div>
+        </section>
+
+        <!-- ── Stats ── -->
+        <section class="px-6 md:px-12 py-24 md:py-32 border-t border-b border-border" aria-label="Statistics">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-12 md:gap-8">
+                <div class="relative reveal-anim">
+                    <div class="stat-glow -top-10 -left-10"></div>
+                    <span class="stat-number block" data-count="54">0</span>
+                    <span class="text-muted text-xs tracking-[0.2em] uppercase mt-2 block">Projects</span>
+                </div>
+                <div class="relative reveal-anim">
+                    <span class="stat-number block" data-count="12">0</span>
+                    <span class="text-muted text-xs tracking-[0.2em] uppercase mt-2 block">Awards</span>
+                </div>
+                <div class="relative reveal-anim">
+                    <span class="stat-number block" data-count="8">0</span>
+                    <span class="text-muted text-xs tracking-[0.2em] uppercase mt-2 block">Years</span>
+                </div>
+                <div class="relative reveal-anim">
+                    <span class="stat-number block" data-count="23">0</span>
+                    <span class="text-muted text-xs tracking-[0.2em] uppercase mt-2 block">Team Members</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Services ── -->
+        <section id="services" class="px-6 md:px-12 py-24 md:py-40" aria-label="Services">
+            <div class="flex items-end justify-between mb-16 md:mb-24">
+                <div>
+                    <span class="tag block mb-4 reveal-anim">What We Do</span>
+                    <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight line-reveal">OUR<br>SERVICES</h2>
+                </div>
+            </div>
+
+            <div class="max-w-4xl">
+                <div class="service-row reveal-anim" data-cursor="view">
+                    <div class="flex items-center gap-4 md:gap-8">
+                        <span class="text-muted text-sm font-mono">01</span>
+                        <h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">BRAND STRATEGY</h3>
+                    </div>
+                    <span class="svc-arrow text-accent text-xl">&#8594;</span>
+                </div>
+                <div class="service-row reveal-anim" data-cursor="view">
+                    <div class="flex items-center gap-4 md:gap-8">
+                        <span class="text-muted text-sm font-mono">02</span>
+                        <h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">WEB DESIGN</h3>
+                    </div>
+                    <span class="svc-arrow text-accent text-xl">&#8594;</span>
+                </div>
+                <div class="service-row reveal-anim" data-cursor="view">
+                    <div class="flex items-center gap-4 md:gap-8">
+                        <span class="text-muted text-sm font-mono">03</span>
+                        <h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">DEVELOPMENT</h3>
+                    </div>
+                    <span class="svc-arrow text-accent text-xl">&#8594;</span>
+                </div>
+                <div class="service-row reveal-anim" data-cursor="view">
+                    <div class="flex items-center gap-4 md:gap-8">
+                        <span class="text-muted text-sm font-mono">04</span>
+                        <h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">MOTION DESIGN</h3>
+                    </div>
+                    <span class="svc-arrow text-accent text-xl">&#8594;</span>
+                </div>
+                <div class="service-row reveal-anim" data-cursor="view">
+                    <div class="flex items-center gap-4 md:gap-8">
+                        <span class="text-muted text-sm font-mono">05</span>
+                        <h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">CREATIVE DIRECTION</h3>
+                    </div>
+                    <span class="svc-arrow text-accent text-xl">&#8594;</span>
+                </div>
+                <div class="service-row reveal-anim" data-cursor="view" style="border-bottom:none">
+                    <div class="flex items-center gap-4 md:gap-8">
+                        <span class="text-muted text-sm font-mono">06</span>
+                        <h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">3D / WEBGL</h3>
+                    </div>
+                    <span class="svc-arrow text-accent text-xl">&#8594;</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── CTA Section ── -->
+        <section id="contact" class="px-6 md:px-12 py-32 md:py-48 border-t border-border" aria-label="Contact call to action">
+            <div class="max-w-5xl mx-auto text-center">
+                <span class="tag block mb-8 reveal-anim">Start a Project</span>
+                <h2 class="font-display text-4xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.95] mb-12 line-reveal">LET'S BUILD<br>SOMETHING<br>GREAT</h2>
+                <div class="reveal-anim">
+                    <a href="mailto:hello@SAIKAT.com" class="inline-flex items-center gap-4 border border-accent text-accent px-10 py-5 text-xs tracking-[0.25em] uppercase hover:bg-accent hover:text-bg transition-all duration-500 group" data-cursor="view">
+                        <span>GET IN TOUCH</span>
+                        <span class="inline-block transition-transform duration-300 group-hover:translate-x-2">&#8594;</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Footer ── -->
+        <footer class="px-6 md:px-12 py-16 md:py-20 border-t border-border" role="contentinfo">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8 mb-16">
+                <div class="md:col-span-2">
+                    <span class="font-display text-lg font-bold tracking-[0.15em] block mb-6">SAIKAT</span>
+                    <p class="text-muted text-sm leading-relaxed max-w-sm">Crafting digital experiences that push boundaries. Based in London, working globally.</p>
+                </div>
+                <div>
+                    <span class="tag block mb-4">Navigation</span>
+                    <nav class="space-y-3">
+                        <a href="#work" class="flink text-fg text-sm hover:text-accent transition-colors block">Work</a>
+                        <a href="#about" class="flink text-fg text-sm hover:text-accent transition-colors block">About</a>
+                        <a href="#services" class="flink text-fg text-sm hover:text-accent transition-colors block">Services</a>
+                        <a href="#contact" class="flink text-fg text-sm hover:text-accent transition-colors block">Contact</a>
+                    </nav>
+                </div>
+                <div>
+                    <span class="tag block mb-4">Connect</span>
+                    <nav class="space-y-3">
+                        <a href="#" class="flink text-fg text-sm hover:text-accent transition-colors block">Twitter / X</a>
+                        <a href="#" class="flink text-fg text-sm hover:text-accent transition-colors block">Instagram</a>
+                        <a href="#" class="flink text-fg text-sm hover:text-accent transition-colors block">Dribbble</a>
+                        <a href="#" class="flink text-fg text-sm hover:text-accent transition-colors block">LinkedIn</a>
+                    </nav>
+                </div>
+            </div>
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-8 border-t border-border">
+                <span class="text-muted text-xs tracking-widest">&copy; 2024 SAIKAT. ALL RIGHTS RESERVED.</span>
+                <span class="text-muted text-xs tracking-widest">LONDON, UK</span>
+            </div>
+        </footer>
+
+    </main>
+
+    <!-- ═══════════ SCRIPTS ═══════════ -->
+    <script>
+    (function() {
+        'use strict';
+
+        /* ── Utility: Split text into word-wrapped spans ── */
+        function splitWords(el) {
+            const text = el.textContent.trim();
+            el.innerHTML = '';
+            const words = text.split(/\s+/);
+            words.forEach((word, i) => {
+                const wrapper = document.createElement('span');
+                wrapper.classList.add('word-reveal');
+                const inner = document.createElement('span');
+                inner.textContent = word;
+                wrapper.appendChild(inner);
+                el.appendChild(wrapper);
+                if (i < words.length - 1) {
+                    el.appendChild(document.createTextNode(' '));
+                }
+            });
+        }
+
+        /* ── Lazy image loading ── */
+        function initLazyImages() {
+            const images = document.querySelectorAll('.lazy-img');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        img.src = img.src; // trigger load
+                        img.onload = () => img.classList.add('loaded');
+                        img.onerror = () => img.classList.add('loaded');
+                        observer.unobserve(img);
+                    }
+                });
+            }, { rootMargin: '100px' });
+            images.forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    observer.observe(img);
+                }
+            });
+        }
+
+        /* ── GSAP + ScrollTrigger Registration ── */
+        gsap.registerPlugin(ScrollTrigger);
+
+        /* ── Lenis Smooth Scroll ── */
+        const lenis = new Lenis({
+            duration: 1.2,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            smooth: true,
+            smoothTouch: false,
+        });
+
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add((time) => { lenis.raf(time * 1000); });
+        gsap.ticker.lagSmoothing(0);
+
+        /* ── Custom Cursor ── */
+        const cursorDot = document.getElementById('cursorDot');
+        const cursorRing = document.getElementById('cursorRing');
+        let mouseX = 0, mouseY = 0;
+        let ringX = 0, ringY = 0;
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        if (!isTouchDevice) {
+            document.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                gsap.set(cursorDot, { x: mouseX, y: mouseY });
+            });
+
+            /* Smooth ring following with lerp */
+            function animateCursorRing() {
+                ringX += (mouseX - ringX) * 0.12;
+                ringY += (mouseY - ringY) * 0.12;
+                gsap.set(cursorRing, { x: ringX, y: ringY });
+                requestAnimationFrame(animateCursorRing);
+            }
+            animateCursorRing();
+
+            /* Hover detection on interactive elements */
+            const hoverTargets = document.querySelectorAll('a, button, [data-cursor="view"], .project-card, .service-row');
+            hoverTargets.forEach(el => {
+                el.addEventListener('mouseenter', () => cursorRing.classList.add('hovering'));
+                el.addEventListener('mouseleave', () => cursorRing.classList.remove('hovering'));
+            });
+        }
+
+        /* ── Preloader ── */
+        const preloader = document.getElementById('preloader');
+        const preloaderBar = document.getElementById('preloaderBar');
+        const preloaderCount = document.getElementById('preloaderCount');
+        const mainContent = document.getElementById('mainContent');
+
+        const preloaderTL = gsap.timeline({
+            onComplete: () => {
+                preloader.style.display = 'none';
+                initAnimations();
+            }
+        });
+
+        /* Animate preloader text in */
+        preloaderTL.to('.preloader-word span', {
+            y: 0, duration: 0.8, ease: 'power3.out'
+        });
+
+        /* Loading bar + counter */
+        const loadObj = { val: 0 };
+        preloaderTL.to(loadObj, {
+            val: 100, duration: 1.8, ease: 'power2.inOut',
+            onUpdate: () => {
+                const v = Math.round(loadObj.val);
+                preloaderBar.style.width = v + '%';
+                preloaderCount.textContent = v + '%';
+            }
+        }, '-=0.3');
+
+        /* Slide preloader out */
+        preloaderTL.to('.preloader-word span', {
+            y: '-110%', duration: 0.6, ease: 'power3.in'
+        }, '+=0.2');
+        preloaderTL.to([preloaderBar, preloaderCount], {
+            opacity: 0, duration: 0.3
+        }, '-=0.6');
+        preloaderTL.to(preloader, {
+            yPercent: -100, duration: 0.8, ease: 'power4.inOut'
+        }, '-=0.3');
+        preloaderTL.to(mainContent, {
+            opacity: 1, duration: 0.5
+        }, '-=0.4');
+
+        /* ── Main Animations (called after preloader) ── */
+        function initAnimations() {
+            initLazyImages();
+
+            /* ── Hero Text Reveal ── */
+            gsap.to('.hero-line span', {
+                y: 0, duration: 1.2, ease: 'power4.out',
+                stagger: 0.12
+            });
+
+            /* Hero subtitle reveal */
+            gsap.to('.line-reveal > *', {
+                y: 0, duration: 1, ease: 'power3.out',
+                delay: 0.8
+            }, '<');
+
+            /* ── Scroll-triggered reveals ── */
+            /* Generic fade-up for .reveal-anim elements */
+            document.querySelectorAll('.reveal-anim').forEach(el => {
+                gsap.from(el, {
+                    y: 60, opacity: 0, duration: 1,
+                    ease: 'power3.out',
+                    scrollTrigger: {
+                        trigger: el,
+                        start: 'top 85%',
+                        toggleActions: 'play none none none'
+                    }
+                });
+            });
+
+            /* Line reveals */
+            document.querySelectorAll('.line-reveal').forEach(el => {
+                /* Skip hero line-reveal (already animated) */
+                if (el.closest('section[aria-label="Hero"]')) return;
+                gsap.to(el.children, {
+                    y: 0, duration: 1, ease: 'power3.out',
+                    stagger: 0.08,
+                    scrollTrigger: {
+                        trigger: el,
+                        start: 'top 85%',
+                        toggleActions: 'play none none none'
+                    }
+                });
+            });
+
+            /* ── Manifesto Word Reveal ── */
+            const manifestoEl = document.getElementById('manifestoText');
+            splitWords(manifestoEl);
+            const wordInners = manifestoEl.querySelectorAll('.word-reveal span');
+
+            gsap.to(wordInners, {
+                y: 0, duration: 0.7, ease: 'power3.out',
+                stagger: 0.015,
+                scrollTrigger: {
+                    trigger: manifestoEl,
+                    start: 'top 80%',
+                    toggleActions: 'play none none none'
+                }
+            });
+
+            /* ── Project Cards: Parallax Images ── */
+            document.querySelectorAll('.project-card').forEach(card => {
+                const img = card.querySelector('img');
+                if (!img) return;
+                gsap.to(img, {
+                    yPercent: -15,
+                    ease: 'none',
+                    scrollTrigger: {
+                        trigger: card,
+                        start: 'top bottom',
+                        end: 'bottom top',
+                        scrub: 1
+                    }
+                });
+            });
+
+            /* ── Horizontal Scroll ── */
+            const hTrack = document.getElementById('hTrack');
+            const hPanels = hTrack.querySelectorAll('.h-panel');
+            const totalPanels = hPanels.length;
+
+            if (window.innerWidth > 768) {
+                const trackWidth = hTrack.scrollWidth;
+                const scrollDistance = trackWidth - window.innerWidth;
+
+                gsap.to(hTrack, {
+                    x: -scrollDistance,
+                    ease: 'none',
+                    scrollTrigger: {
+                        trigger: '.horizontal-section',
+                        pin: true,
+                        scrub: 1,
+                        end: () => '+=' + scrollDistance,
+                        invalidateOnRefresh: true,
+                    }
+                });
+            }
+
+            /* ── Stats Counter ── */
+            document.querySelectorAll('.stat-number').forEach(stat => {
+                const target = parseInt(stat.dataset.count, 10);
+                const suffix = stat.dataset.suffix || '+';
+                const obj = { val: 0 };
+                gsap.to(obj, {
+                    val: target, duration: 2, ease: 'power2.out',
+                    onUpdate: () => {
+                        stat.textContent = Math.round(obj.val) + suffix;
+                    },
+                    scrollTrigger: {
+                        trigger: stat,
+                        start: 'top 85%',
+                        toggleActions: 'play none none none'
+                    }
+                });
+            });
+
+            /* ── Divider lines animate in ── */
+            document.querySelectorAll('.border-t, .border-b').forEach(div => {
+                gsap.from(div, {
+                    scaleX: 0, transformOrigin: 'left center',
+                    duration: 1.2, ease: 'power3.out',
+                    scrollTrigger: {
+                        trigger: div,
+                        start: 'top 90%',
+                        toggleActions: 'play none none none'
+                    }
+                });
+            });
+
+            /* ── Footer reveal ── */
+            gsap.from('footer > div, footer > .flex', {
+                y: 40, opacity: 0, duration: 0.8,
+                ease: 'power3.out', stagger: 0.15,
+                scrollTrigger: {
+                    trigger: 'footer',
+                    start: 'top 85%',
+                    toggleActions: 'play none none none'
+                }
+            });
+
+            /* ── Parallax on horizontal panel images ── */
+            document.querySelectorAll('.h-panel img').forEach(img => {
+                gsap.from(img, {
+                    scale: 1.3,
+                    scrollTrigger: {
+                        trigger: img,
+                        start: 'top bottom',
+                        end: 'bottom top',
+                        scrub: 1,
+                        containerAnimation: gsap.getById && undefined
+                    }
+                });
+            });
+
+            /* Refresh ScrollTrigger after everything is set */
+            ScrollTrigger.refresh();
+        }
+
+        /* ── Menu Toggle ── */
+        const menuOverlay = document.getElementById('menuOverlay');
+        const menuLine1 = document.getElementById('menuLine1');
+        const menuLine2 = document.getElementById('menuLine2');
+        let menuOpen = false;
+
+        window.toggleMenu = function() {
+            menuOpen = !menuOpen;
+            menuOverlay.classList.toggle('open', menuOpen);
+            if (menuOpen) {
+                lenis.stop();
+                menuLine1.style.transform = 'rotate(45deg) translateY(3px)';
+                menuLine2.style.transform = 'rotate(-45deg) translateY(-3px)';
+                menuLine2.style.width = '1.75rem';
+            } else {
+                lenis.start();
+                menuLine1.style.transform = '';
+                menuLine2.style.transform = '';
+                menuLine2.style.width = '';
+            }
+        };
+
+        window.closeMenu = function() {
+            if (menuOpen) toggleMenu();
+        };
+
+        /* ── Smooth scroll for anchor links ── */
+        document.querySelectorAll('a[href^="#"]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) {
+                    e.preventDefault();
+                    lenis.scrollTo(target, { offset: 0, duration: 1.5 });
+                }
+            });
+        });
+
+        /* ── Magnetic effect on CTA button ── */
+        const ctaBtn = document.querySelector('a[href="mailto:hello@SAIKAT.com"]');
+        if (ctaBtn && !isTouchDevice) {
+            ctaBtn.addEventListener('mousemove', (e) => {
+                const rect = ctaBtn.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                gsap.to(ctaBtn, { x: x * 0.2, y: y * 0.2, duration: 0.3, ease: 'power2.out' });
+            });
+            ctaBtn.addEventListener('mouseleave', () => {
+                gsap.to(ctaBtn, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.4)' });
+            });
+        }
+
+        /* ── Background glow that subtly follows mouse ── */
+        if (!isTouchDevice) {
+            const glow = document.createElement('div');
+            glow.style.cssText = `
+                position: fixed; width: 500px; height: 500px; border-radius: 50%;
+                background: radial-gradient(circle, rgba(200,255,0,0.04) 0%, transparent 70%);
+                pointer-events: none; z-index: 1; transform: translate(-50%, -50%);
+                will-change: transform;
+            `;
+            document.body.appendChild(glow);
+            document.addEventListener('mousemove', (e) => {
+                gsap.to(glow, { x: e.clientX, y: e.clientY, duration: 1.2, ease: 'power2.out' });
+            });
+        }
+
+        /* ── Resize handler ── */
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                ScrollTrigger.refresh();
+            }, 250);
+        });
+
+    })();
+    </script>
+</body>
+</html>
