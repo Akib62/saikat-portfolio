@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAIKAT — Digital Experiences</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { bg:'#0a0a0a', fg:'#e8e6e3', muted:'#6b6b6b', accent:'#c8ff00', card:'#111111', border:'#1c1c1c' },
+                    fontFamily: { display:['Syncopate','sans-serif'], body:['Space Grotesk','sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root{--bg:#0a0a0a;--fg:#e8e6e3;--muted:#6b6b6b;--accent:#c8ff00;--card:#111111;--border:#1c1c1c}
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        html{background:var(--bg)}
+        body{background:var(--bg);color:var(--fg);font-family:'Space Grotesk',sans-serif;overflow-x:hidden;cursor:none}
+        ::selection{background:var(--accent);color:var(--bg)}
+        ::-webkit-scrollbar{width:0}
+
+        /* 3D Canvas */
+        #bg3d{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+        .vignette{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 30%,rgba(10,10,10,0.7) 100%)}
+
+        /* Section glass backgrounds */
+        .glass{background:rgba(10,10,10,0.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+        .glass-light{background:rgba(10,10,10,0.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+        .glass-clear{background:transparent}
+
+        /* Preloader */
+        .preloader{position:fixed;inset:0;background:var(--bg);z-index:10000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2rem}
+        .preloader-word{overflow:hidden}
+        .preloader-word span{display:block;transform:translateY(110%);font-family:'Syncopate',sans-serif;font-size:clamp(1.8rem,7vw,5rem);font-weight:700;letter-spacing:0.15em}
+        .preloader-bar-track{width:200px;height:1px;background:var(--border);position:relative;overflow:hidden}
+        .preloader-bar-fill{position:absolute;top:0;left:0;height:100%;width:0%;background:var(--accent)}
+        .preloader-counter{font-family:'Syncopate',sans-serif;font-size:0.85rem;letter-spacing:0.2em;color:var(--muted)}
+
+        /* Custom Cursor */
+        .cursor-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:difference}
+        .cursor-ring{width:40px;height:40px;border:1px solid rgba(200,255,0,0.5);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .35s cubic-bezier(.25,.46,.45,.94),height .35s cubic-bezier(.25,.46,.45,.94),border-color .35s,background .35s}
+        .cursor-ring.hovering{width:70px;height:70px;background:rgba(200,255,0,0.08);border-color:var(--accent)}
+
+        /* Noise */
+        .noise{position:fixed;inset:0;pointer-events:none;z-index:9990;opacity:0.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+        /* Reveal helpers */
+        .word-reveal{overflow:hidden;display:inline-block}
+        .word-reveal span{display:inline-block;transform:translateY(105%)}
+        .line-reveal{overflow:hidden}
+        .line-reveal > *{transform:translateY(105%)}
+
+        /* Hero */
+        .hero-line{font-family:'Syncopate',sans-serif;font-weight:700;line-height:.92;letter-spacing:-0.03em;overflow:hidden}
+        .hero-line span{display:inline-block;transform:translateY(105%)}
+        .hero-line-sm{font-size:clamp(.7rem,1.5vw,1rem);letter-spacing:.3em;color:var(--muted)}
+        .hero-line-lg{font-size:clamp(2.8rem,10vw,10rem)}
+
+        /* Marquee */
+        .marquee-track{display:flex;width:max-content;animation:marquee 25s linear infinite}
+        @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+        /* Project Cards */
+        .project-card{position:relative;overflow:hidden}
+        .project-card .img-wrap{overflow:hidden}
+        .project-card img{transition:transform 1s cubic-bezier(.25,.46,.45,.94);will-change:transform;scale:1.15}
+        .project-card:hover img{transform:scale(1)}
+        .project-card .card-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(10,10,10,.85) 0%,transparent 60%);opacity:0;transition:opacity .5s}
+        .project-card:hover .card-overlay{opacity:1}
+        .project-card .card-info{position:absolute;bottom:0;left:0;right:0;padding:2rem;transform:translateY(20px);opacity:0;transition:all .5s cubic-bezier(.25,.46,.45,.94)}
+        .project-card:hover .card-info{transform:translateY(0);opacity:1}
+
+        /* Horizontal Scroll */
+        .horizontal-section{overflow:hidden}
+        .h-track{display:flex;width:fit-content;will-change:transform}
+        .h-panel{width:100vw;height:100vh;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:4rem;position:relative}
+        .h-panel-inner{display:grid;grid-template-columns:1fr 1fr;gap:4rem;max-width:1200px;width:100%;align-items:center}
+
+        /* Service Items */
+        .service-row{border-bottom:1px solid var(--border);padding:1.75rem 0;display:flex;align-items:center;justify-content:space-between;transition:padding-left .4s,border-color .4s}
+        .service-row:hover{padding-left:1.5rem;border-color:var(--accent)}
+        .service-row .svc-arrow{transform:translateX(-12px);opacity:0;transition:all .4s cubic-bezier(.25,.46,.45,.94)}
+        .service-row:hover .svc-arrow{transform:translateX(0);opacity:1}
+
+        /* Nav link hover */
+        .nav-link{position:relative;overflow:hidden}
+        .nav-link .nl-top{transition:transform .4s cubic-bezier(.76,0,.24,1)}
+        .nav-link .nl-bot{position:absolute;top:0;left:0;transform:translateY(105%);transition:transform .4s cubic-bezier(.76,0,.24,1)}
+        .nav-link:hover .nl-top{transform:translateY(-105%)}
+        .nav-link:hover .nl-bot{transform:translateY(0)}
+
+        /* Menu Overlay */
+        .menu-overlay{position:fixed;inset:0;background:var(--bg);z-index:9000;display:flex;align-items:center;justify-content:center;clip-path:circle(0% at calc(100% - 3rem) 2.5rem);transition:clip-path .8s cubic-bezier(.76,0,.24,1);pointer-events:none}
+        .menu-overlay.open{clip-path:circle(150% at calc(100% - 3rem) 2.5rem);pointer-events:all}
+        .menu-overlay .mi{overflow:hidden}
+        .menu-overlay .mi-inner{transform:translateY(105%);transition:transform .7s cubic-bezier(.76,0,.24,1)}
+        .menu-overlay.open .mi-inner{transform:translateY(0)}
+
+        /* Scroll indicator */
+        .scroll-indicator{animation:scrollBounce 2s ease-in-out infinite}
+        @keyframes scrollBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(10px)}}
+
+        /* Stat glow */
+        .stat-glow{position:absolute;width:200px;height:200px;border-radius:50%;filter:blur(80px);background:var(--accent);opacity:.08;pointer-events:none}
+
+        /* Footer link */
+        .flink{position:relative;display:inline-block}
+        .flink::after{content:'';position:absolute;bottom:-2px;left:0;width:0;height:1px;background:var(--accent);transition:width .4s cubic-bezier(.25,.46,.45,.94)}
+        .flink:hover::after{width:100%}
+
+        /* Lazy images */
+        .lazy-img{opacity:0;transition:opacity .8s}
+        .lazy-img.loaded{opacity:1}
+
+        /* Eclipse label */
+        .eclipse-label{position:fixed;z-index:5;pointer-events:none;opacity:0;font-family:'Syncopate',sans-serif;font-size:.7rem;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;transition:opacity .6s}
+
+        @media(max-width:768px){
+            .cursor-dot,.cursor-ring{display:none!important}
+            body{cursor:auto}
+            .h-panel-inner{grid-template-columns:1fr!important;gap:2rem!important}
+            .h-panel{padding:2rem!important}
+            .service-row{flex-direction:column;align-items:flex-start;gap:.75rem}
+            .eclipse-label{display:none}
+        }
+        @media(prefers-reduced-motion:reduce){
+            *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+            .marquee-track{animation:none!important}
+        }
+    </style>
+</head>
+<body>
+    <!-- Preloader -->
+    <div class="preloader" id="preloader">
+        <div class="preloader-word"><span>SAIKAT</span></div>
+        <div class="preloader-bar-track"><div class="preloader-bar-fill" id="preloaderBar"></div></div>
+        <div class="preloader-counter" id="preloaderCount">0%</div>
+    </div>
+
+    <!-- Custom Cursor -->
+    <div class="cursor-dot" id="cursorDot"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+
+    <!-- Noise Overlay -->
+    <div class="noise" aria-hidden="true"></div>
+
+    <!-- 3D Canvas Background -->
+    <canvas id="bg3d"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <!-- Eclipse label that appears during the sequence -->
+    <div class="eclipse-label" id="eclipseLabel" style="top:50%;left:50%;transform:translate(-50%,-50%)">Total Eclipse</div>
+
+    <!-- Menu Overlay -->
+    <div class="menu-overlay" id="menuOverlay" role="dialog" aria-label="Navigation menu">
+        <nav class="text-center space-y-6">
+            <div class="mi"><div class="mi-inner" style="transition-delay:.05s"><a href="#work" class="font-display text-4xl md:text-6xl font-bold tracking-wider hover:text-accent transition-colors" onclick="closeMenu()">WORK</a></div></div>
+            <div class="mi"><div class="mi-inner" style="transition-delay:.1s"><a href="#about" class="font-display text-4xl md:text-6xl font-bold tracking-wider hover:text-accent transition-colors" onclick="closeMenu()">ABOUT</a></div></div>
+            <div class="mi"><div class="mi-inner" style="transition-delay:.15s"><a href="#services" class="font-display text-4xl md:text-6xl font-bold tracking-wider hover:text-accent transition-colors" onclick="closeMenu()">SERVICES</a></div></div>
+            <div class="mi"><div class="mi-inner" style="transition-delay:.2s"><a href="#contact" class="font-display text-4xl md:text-6xl font-bold tracking-wider hover:text-accent transition-colors" onclick="closeMenu()">CONTACT</a></div></div>
+            <div class="mi mt-12"><div class="mi-inner" style="transition-delay:.3s"><p class="text-muted text-sm tracking-widest">HELLO@SAIKAT.COM</p></div></div>
+        </nav>
+    </div>
+
+    <!-- ═══════════ MAIN CONTENT ═══════════ -->
+    <main id="mainContent" style="opacity:0;position:relative;z-index:2">
+
+        <!-- Navigation -->
+        <header class="fixed top-0 left-0 w-full z-[8000] mix-blend-difference" role="banner">
+            <div class="flex items-center justify-between px-6 md:px-12 py-6">
+                <a href="#" class="font-display text-sm md:text-base font-bold tracking-[0.2em] text-fg" aria-label="SAIKAT home">SAIKAT</a>
+                <div class="hidden md:flex items-center gap-10">
+                    <a href="#work" class="nav-link text-xs tracking-[0.2em] text-fg uppercase"><span class="nl-top">Work</span><span class="nl-bot text-accent">Work</span></a>
+                    <a href="#about" class="nav-link text-xs tracking-[0.2em] text-fg uppercase"><span class="nl-top">About</span><span class="nl-bot text-accent">About</span></a>
+                    <a href="#services" class="nav-link text-xs tracking-[0.2em] text-fg uppercase"><span class="nl-top">Services</span><span class="nl-bot text-accent">Services</span></a>
+                    <a href="#contact" class="nav-link text-xs tracking-[0.2em] text-fg uppercase"><span class="nl-top">Contact</span><span class="nl-bot text-accent">Contact</span></a>
+                </div>
+                <button id="menuBtn" class="w-10 h-10 flex flex-col items-end justify-center gap-1.5 md:hidden" aria-label="Open menu" onclick="toggleMenu()">
+                    <span class="block w-7 h-[1px] bg-fg transition-all origin-center" id="menuLine1"></span>
+                    <span class="block w-5 h-[1px] bg-fg transition-all" id="menuLine2"></span>
+                </button>
+                <button class="hidden md:block text-xs tracking-[0.2em] text-fg uppercase hover:text-accent transition-colors cursor-none" onclick="toggleMenu()" aria-label="Open menu">MENU +</button>
+            </div>
+        </header>
+
+        <!-- Hero -->
+        <section class="relative h-screen flex flex-col justify-center px-6 md:px-12 glass-clear" aria-label="Hero">
+            <div class="mb-4"><div class="hero-line hero-line-sm"><span>WE CREATE</span></div></div>
+            <div><div class="hero-line hero-line-lg"><span>DIGITAL</span></div></div>
+            <div><div class="hero-line hero-line-lg"><span>EXPERIENCES</span></div></div>
+            <div class="mt-8 md:mt-12 max-w-md line-reveal">
+                <p class="text-muted text-sm md:text-base leading-relaxed">Award-winning digital agency crafting immersive web experiences through design, code, and motion.</p>
+            </div>
+            <div class="absolute bottom-10 left-6 md:left-12 flex items-center gap-3 scroll-indicator">
+                <div class="w-[1px] h-12 bg-border relative overflow-hidden"><div class="w-full h-1/2 bg-accent absolute top-0 animate-pulse"></div></div>
+                <span class="text-[0.65rem] tracking-[0.3em] text-muted uppercase">Scroll</span>
+            </div>
+            <div class="absolute bottom-10 right-6 md:right-12"><span class="text-[0.65rem] tracking-[0.3em] text-muted uppercase">2024</span></div>
+        </section>
+
+        <!-- Marquee -->
+        <section class="py-8 border-t border-b border-border overflow-hidden glass-light" aria-hidden="true">
+            <div class="marquee-track">
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DESIGN</span><span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DEVELOP</span><span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DELIVER</span><span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">ITERATE</span><span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DESIGN</span><span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DEVELOP</span><span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">DELIVER</span><span class="text-accent mx-4">&#9670;</span>
+                <span class="font-display text-2xl md:text-4xl font-bold tracking-wider text-fg whitespace-nowrap mx-8">ITERATE</span><span class="text-accent mx-4">&#9670;</span>
+            </div>
+        </section>
+
+        <!-- Projects Grid -->
+        <section id="work" class="px-6 md:px-12 py-24 md:py-40 glass" aria-label="Selected work">
+            <div class="flex items-end justify-between mb-16 md:mb-24">
+                <div>
+                    <span class="tag block mb-4 reveal-anim text-accent text-[0.65rem] tracking-[0.3em] uppercase">Selected Work</span>
+                    <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight line-reveal">FEATURED<br>PROJECTS</h2>
+                </div>
+                <span class="hidden md:block text-muted text-sm tracking-widest reveal-anim">2021 — 2024</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                <div class="project-card group reveal-anim" data-cursor="view">
+                    <div class="img-wrap aspect-[4/5]"><img src="https://picsum.photos/seed/SAIKAT-p1/800/1000" alt="Meridian project" class="lazy-img w-full h-full object-cover" loading="lazy"></div>
+                    <div class="card-overlay"></div>
+                    <div class="card-info"><span class="text-accent text-xs tracking-[0.2em] uppercase block mb-2">Brand / Web</span><h3 class="font-display text-xl md:text-2xl font-bold tracking-wider">MERIDIAN</h3></div>
+                </div>
+                <div class="project-card group reveal-anim" data-cursor="view">
+                    <div class="img-wrap aspect-[4/5] md:mt-24"><img src="https://picsum.photos/seed/SAIKAT-p2/800/1000" alt="Nexus project" class="lazy-img w-full h-full object-cover" loading="lazy"></div>
+                    <div class="card-overlay"></div>
+                    <div class="card-info"><span class="text-accent text-xs tracking-[0.2em] uppercase block mb-2">Development / UI</span><h3 class="font-display text-xl md:text-2xl font-bold tracking-wider">NEXUS</h3></div>
+                </div>
+                <div class="project-card group md:col-span-2 reveal-anim" data-cursor="view">
+                    <div class="img-wrap aspect-[16/7]"><img src="https://picsum.photos/seed/SAIKAT-p3/1600/700" alt="Aether project" class="lazy-img w-full h-full object-cover" loading="lazy"></div>
+                    <div class="card-overlay"></div>
+                    <div class="card-info"><span class="text-accent text-xs tracking-[0.2em] uppercase block mb-2">Motion / Experience</span><h3 class="font-display text-xl md:text-2xl font-bold tracking-wider">AETHER</h3></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Horizontal Scroll -->
+        <section class="horizontal-section glass-light" aria-label="Case studies">
+            <div class="h-track" id="hTrack">
+                <div class="h-panel"><div class="h-panel-inner"><div><span class="tag block mb-6 text-accent text-[0.65rem] tracking-[0.3em] uppercase">Case Study 01</span><h3 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">PRISM<br>COLLECTIVE</h3><p class="text-muted text-sm md:text-base leading-relaxed max-w-sm">A digital-first brand identity for a contemporary art collective pushing the boundaries of generative design and interactive installations.</p></div><div class="overflow-hidden rounded-sm"><img src="https://picsum.photos/seed/SAIKAT-h1/700/500" alt="Prism Collective" class="lazy-img w-full h-auto object-cover" loading="lazy"></div></div></div>
+                <div class="h-panel"><div class="h-panel-inner"><div><span class="tag block mb-6 text-accent text-[0.65rem] tracking-[0.3em] uppercase">Case Study 02</span><h3 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">SONIC<br>LABORATORIES</h3><p class="text-muted text-sm md:text-base leading-relaxed max-w-sm">An immersive web experience for an audio technology company, featuring real-time audio visualization and spatial sound design.</p></div><div class="overflow-hidden rounded-sm"><img src="https://picsum.photos/seed/SAIKAT-h2/700/500" alt="Sonic Laboratories" class="lazy-img w-full h-auto object-cover" loading="lazy"></div></div></div>
+                <div class="h-panel"><div class="h-panel-inner"><div><span class="tag block mb-6 text-accent text-[0.65rem] tracking-[0.3em] uppercase">Case Study 03</span><h3 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">VERTICAL<br>STUDIOS</h3><p class="text-muted text-sm md:text-base leading-relaxed max-w-sm">A comprehensive digital platform for an architecture firm, combining portfolio presentation with project management tools.</p></div><div class="overflow-hidden rounded-sm"><img src="https://picsum.photos/seed/SAIKAT-h3/700/500" alt="Vertical Studios" class="lazy-img w-full h-auto object-cover" loading="lazy"></div></div></div>
+                <div class="h-panel"><div class="h-panel-inner"><div><span class="tag block mb-6 text-accent text-[0.65rem] tracking-[0.3em] uppercase">Case Study 04</span><h3 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">FLUX<br>DYNAMICS</h3><p class="text-muted text-sm md:text-base leading-relaxed max-w-sm">A high-performance e-commerce experience for a sustainable fashion brand, with WebGL product configurators and fluid transitions.</p></div><div class="overflow-hidden rounded-sm"><img src="https://picsum.photos/seed/SAIKAT-h4/700/500" alt="Flux Dynamics" class="lazy-img w-full h-auto object-cover" loading="lazy"></div></div></div>
+            </div>
+        </section>
+
+        <!-- About / Manifesto -->
+        <section id="about" class="px-6 md:px-12 py-32 md:py-48 glass" aria-label="About">
+            <div class="max-w-5xl">
+                <span class="tag block mb-10 reveal-anim text-accent text-[0.65rem] tracking-[0.3em] uppercase">Our Philosophy</span>
+                <p class="font-display text-2xl md:text-5xl font-bold leading-[1.15] tracking-tight" id="manifestoText">We believe in the power of digital craft. Every pixel, every interaction, every frame of motion is an opportunity to create something meaningful. We don't just build websites — we architect experiences that resonate, inspire, and endure.</p>
+            </div>
+        </section>
+
+        <!-- Stats -->
+        <section class="px-6 md:px-12 py-24 md:py-32 border-t border-b border-border glass" aria-label="Statistics">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-12 md:gap-8">
+                <div class="relative reveal-anim"><div class="stat-glow -top-10 -left-10"></div><span class="stat-number block" data-count="54">0</span><span class="text-muted text-xs tracking-[0.2em] uppercase mt-2 block">Projects</span></div>
+                <div class="relative reveal-anim"><span class="stat-number block" data-count="12">0</span><span class="text-muted text-xs tracking-[0.2em] uppercase mt-2 block">Awards</span></div>
+                <div class="relative reveal-anim"><span class="stat-number block" data-count="8">0</span><span class="text-muted text-xs tracking-[0.2em] uppercase mt-2 block">Years</span></div>
+                <div class="relative reveal-anim"><span class="stat-number block" data-count="23">0</span><span class="text-muted text-xs tracking-[0.2em] uppercase mt-2 block">Team Members</span></div>
+            </div>
+        </section>
+
+        <!-- Services -->
+        <section id="services" class="px-6 md:px-12 py-24 md:py-40 glass" aria-label="Services">
+            <div class="flex items-end justify-between mb-16 md:mb-24">
+                <div><span class="tag block mb-4 reveal-anim text-accent text-[0.65rem] tracking-[0.3em] uppercase">What We Do</span><h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight line-reveal">OUR<br>SERVICES</h2></div>
+            </div>
+            <div class="max-w-4xl">
+                <div class="service-row reveal-anim" data-cursor="view"><div class="flex items-center gap-4 md:gap-8"><span class="text-muted text-sm font-mono">01</span><h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">BRAND STRATEGY</h3></div><span class="svc-arrow text-accent text-xl">&#8594;</span></div>
+                <div class="service-row reveal-anim" data-cursor="view"><div class="flex items-center gap-4 md:gap-8"><span class="text-muted text-sm font-mono">02</span><h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">WEB DESIGN</h3></div><span class="svc-arrow text-accent text-xl">&#8594;</span></div>
+                <div class="service-row reveal-anim" data-cursor="view"><div class="flex items-center gap-4 md:gap-8"><span class="text-muted text-sm font-mono">03</span><h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">DEVELOPMENT</h3></div><span class="svc-arrow text-accent text-xl">&#8594;</span></div>
+                <div class="service-row reveal-anim" data-cursor="view"><div class="flex items-center gap-4 md:gap-8"><span class="text-muted text-sm font-mono">04</span><h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">MOTION DESIGN</h3></div><span class="svc-arrow text-accent text-xl">&#8594;</span></div>
+                <div class="service-row reveal-anim" data-cursor="view"><div class="flex items-center gap-4 md:gap-8"><span class="text-muted text-sm font-mono">05</span><h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">CREATIVE DIRECTION</h3></div><span class="svc-arrow text-accent text-xl">&#8594;</span></div>
+                <div class="service-row reveal-anim" data-cursor="view" style="border-bottom:none"><div class="flex items-center gap-4 md:gap-8"><span class="text-muted text-sm font-mono">06</span><h3 class="font-display text-lg md:text-2xl font-bold tracking-wider">3D / WEBGL</h3></div><span class="svc-arrow text-accent text-xl">&#8594;</span></div>
+            </div>
+        </section>
+
+        <!-- CTA Section — Eclipse backdrop -->
+        <section id="contact" class="px-6 md:px-12 py-32 md:py-48 border-t border-border glass-clear" aria-label="Contact call to action">
+            <div class="max-w-5xl mx-auto text-center">
+                <span class="tag block mb-8 reveal-anim text-accent text-[0.65rem] tracking-[0.3em] uppercase">Start a Project</span>
+                <h2 class="font-display text-4xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.95] mb-12 line-reveal">LET'S BUILD<br>SOMETHING<br>GREAT</h2>
+                <div class="reveal-anim">
+                    <a href="mailto:hello@SAIKAT.com" class="inline-flex items-center gap-4 border border-accent text-accent px-10 py-5 text-xs tracking-[0.25em] uppercase hover:bg-accent hover:text-bg transition-all duration-500 group" data-cursor="view">
+                        <span>GET IN TOUCH</span><span class="inline-block transition-transform duration-300 group-hover:translate-x-2">&#8594;</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="px-6 md:px-12 py-16 md:py-20 border-t border-border glass" role="contentinfo">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8 mb-16">
+                <div class="md:col-span-2"><span class="font-display text-lg font-bold tracking-[0.15em] block mb-6">SAIKAT</span><p class="text-muted text-sm leading-relaxed max-w-sm">Crafting digital experiences that push boundaries. Based in London, working globally.</p></div>
+                <div><span class="tag block mb-4 text-accent text-[0.65rem] tracking-[0.3em] uppercase">Navigation</span><nav class="space-y-3"><a href="#work" class="flink text-fg text-sm hover:text-accent transition-colors block">Work</a><a href="#about" class="flink text-fg text-sm hover:text-accent transition-colors block">About</a><a href="#services" class="flink text-fg text-sm hover:text-accent transition-colors block">Services</a><a href="#contact" class="flink text-fg text-sm hover:text-accent transition-colors block">Contact</a></nav></div>
+                <div><span class="tag block mb-4 text-accent text-[0.65rem] tracking-[0.3em] uppercase">Connect</span><nav class="space-y-3"><a href="#" class="flink text-fg text-sm hover:text-accent transition-colors block">Twitter / X</a><a href="#" class="flink text-fg text-sm hover:text-accent transition-colors block">Instagram</a><a href="#" class="flink text-fg text-sm hover:text-accent transition-colors block">Dribbble</a><a href="#" class="flink text-fg text-sm hover:text-accent transition-colors block">LinkedIn</a></nav></div>
+            </div>
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-8 border-t border-border">
+                <span class="text-muted text-xs tracking-widest">&copy; 2024 SAIKAT. ALL RIGHTS RESERVED.</span>
+                <span class="text-muted text-xs tracking-widest">LONDON, UK</span>
+            </div>
+        </footer>
+    </main>
+
+    <!-- ═══════════ UI SCRIPTS ═══════════ -->
+    <script>
+    (function(){
+        'use strict';
+
+        /* Split text into word-wrapped spans */
+        function splitWords(el){
+            const text=el.textContent.trim(); el.innerHTML='';
+            const words=text.split(/\s+/);
+            words.forEach((w,i)=>{
+                const wrap=document.createElement('span'); wrap.classList.add('word-reveal');
+                const inner=document.createElement('span'); inner.textContent=w;
+                wrap.appendChild(inner); el.appendChild(wrap);
+                if(i<words.length-1) el.appendChild(document.createTextNode(' '));
+            });
+        }
+
+        /* Lazy image loading */
+        function initLazyImages(){
+            const obs=new IntersectionObserver(entries=>{
+                entries.forEach(e=>{
+                    if(e.isIntersecting){const img=e.target;img.onload=()=>img.classList.add('loaded');img.onerror=()=>img.classList.add('loaded');obs.unobserve(img);}
+                });
+            },{rootMargin:'100px'});
+            document.querySelectorAll('.lazy-img').forEach(img=>{
+                if(img.complete) img.classList.add('loaded');
+                else obs.observe(img);
+            });
+        }
+
+        gsap.registerPlugin(ScrollTrigger);
+
+        /* Lenis Smooth Scroll */
+        const lenis=new Lenis({duration:1.2,easing:t=>Math.min(1,1.001-Math.pow(2,-10*t)),smooth:true,smoothTouch:false});
+        lenis.on('scroll',ScrollTrigger.update);
+        gsap.ticker.add(time=>{lenis.raf(time*1000)});
+        gsap.ticker.lagSmoothing(0);
+
+        /* Custom Cursor */
+        const cursorDot=document.getElementById('cursorDot'),cursorRing=document.getElementById('cursorRing');
+        let mouseX=0,mouseY=0,ringX=0,ringY=0;
+        const isTouch='ontouchstart' in window||navigator.maxTouchPoints>0;
+        if(!isTouch){
+            document.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY;gsap.set(cursorDot,{x:mouseX,y:mouseY})});
+            (function animRing(){ringX+=(mouseX-ringX)*.12;ringY+=(mouseY-ringY)*.12;gsap.set(cursorRing,{x:ringX,y:ringY});requestAnimationFrame(animRing)})();
+            document.querySelectorAll('a,button,[data-cursor="view"],.project-card,.service-row').forEach(el=>{
+                el.addEventListener('mouseenter',()=>cursorRing.classList.add('hovering'));
+                el.addEventListener('mouseleave',()=>cursorRing.classList.remove('hovering'));
+            });
+        }
+
+        /* Expose mouse position for Three.js */
+        window._mouseX=0;window._mouseY=0;
+        document.addEventListener('mousemove',e=>{window._mouseX=(e.clientX/window.innerWidth-.5)*2;window._mouseY=(e.clientY/window.innerHeight-.5)*2});
+
+        /* Preloader */
+        const preloader=document.getElementById('preloader'),preloaderBar=document.getElementById('preloaderBar'),preloaderCount=document.getElementById('preloaderCount'),mainContent=document.getElementById('mainContent');
+        const preTL=gsap.timeline({onComplete:()=>{
+            preloader.style.display='none';
+            initAnimations();
+            window.dispatchEvent(new Event('preloader-done'));
+        }});
+        preTL.to('.preloader-word span',{y:0,duration:.8,ease:'power3.out'});
+        const loadObj={val:0};
+        preTL.to(loadObj,{val:100,duration:1.8,ease:'power2.inOut',onUpdate:()=>{const v=Math.round(loadObj.val);preloaderBar.style.width=v+'%';preloaderCount.textContent=v+'%'}},'-=.3');
+        preTL.to('.preloader-word span',{y:'-110%',duration:.6,ease:'power3.in'},'+=.2');
+        preTL.to([preloaderBar,preloaderCount],{opacity:0,duration:.3},'-=.6');
+        preTL.to(preloader,{yPercent:-100,duration:.8,ease:'power4.inOut'},'-=.3');
+        preTL.to(mainContent,{opacity:1,duration:.5},'-=.4');
+
+        /* Main Animations */
+        function initAnimations(){
+            initLazyImages();
+            gsap.to('.hero-line span',{y:0,duration:1.2,ease:'power4.out',stagger:.12});
+            gsap.to('.line-reveal > *',{y:0,duration:1,ease:'power3.out',delay:.8},'<');
+
+            document.querySelectorAll('.reveal-anim').forEach(el=>{
+                gsap.from(el,{y:60,opacity:0,duration:1,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 85%',toggleActions:'play none none none'}});
+            });
+            document.querySelectorAll('.line-reveal').forEach(el=>{
+                if(el.closest('[aria-label="Hero"]'))return;
+                gsap.to(el.children,{y:0,duration:1,ease:'power3.out',stagger:.08,scrollTrigger:{trigger:el,start:'top 85%',toggleActions:'play none none none'}});
+            });
+
+            const mEl=document.getElementById('manifestoText');
+            splitWords(mEl);
+            gsap.to(mEl.querySelectorAll('.word-reveal span'),{y:0,duration:.7,ease:'power3.out',stagger:.015,scrollTrigger:{trigger:mEl,start:'top 80%',toggleActions:'play none none none'}});
+
+            document.querySelectorAll('.project-card').forEach(card=>{
+                const img=card.querySelector('img');if(!img)return;
+                gsap.to(img,{yPercent:-15,ease:'none',scrollTrigger:{trigger:card,start:'top bottom',end:'bottom top',scrub:1}});
+            });
+
+            /* Horizontal scroll */
+            if(window.innerWidth>768){
+                const hTrack=document.getElementById('hTrack');
+                const scrollDist=hTrack.scrollWidth-window.innerWidth;
+                gsap.to(hTrack,{x:-scrollDist,ease:'none',scrollTrigger:{trigger:'.horizontal-section',pin:true,scrub:1,end:'+='+scrollDist,invalidateOnRefresh:true}});
+            }
+
+            /* Stats counter */
+            document.querySelectorAll('.stat-number').forEach(stat=>{
+                const target=parseInt(stat.dataset.count,10);const obj={val:0};
+                gsap.to(obj,{val:target,duration:2,ease:'power2.out',onUpdate:()=>{stat.textContent=Math.round(obj.val)+'+'},scrollTrigger:{trigger:stat,start:'top 85%',toggleActions:'play none none none'}});
+            });
+
+            gsap.from('footer > div, footer > .flex',{y:40,opacity:0,duration:.8,ease:'power3.out',stagger:.15,scrollTrigger:{trigger:'footer',start:'top 85%',toggleActions:'play none none none'}});
+            ScrollTrigger.refresh();
+        }
+
+        /* Menu Toggle */
+        const menuOverlay=document.getElementById('menuOverlay'),menuLine1=document.getElementById('menuLine1'),menuLine2=document.getElementById('menuLine2');
+        let menuOpen=false;
+        window.toggleMenu=function(){
+            menuOpen=!menuOpen;menuOverlay.classList.toggle('open',menuOpen);
+            if(menuOpen){lenis.stop();menuLine1.style.transform='rotate(45deg) translateY(3px)';menuLine2.style.transform='rotate(-45deg) translateY(-3px)';menuLine2.style.width='1.75rem';}
+            else{lenis.start();menuLine1.style.transform='';menuLine2.style.transform='';menuLine2.style.width='';}
+        };
+        window.closeMenu=function(){if(menuOpen)toggleMenu()};
+        document.querySelectorAll('a[href^="#"]').forEach(link=>{
+            link.addEventListener('click',e=>{const t=document.querySelector(link.getAttribute('href'));if(t){e.preventDefault();lenis.scrollTo(t,{offset:0,duration:1.5})}});
+        });
+
+        /* Magnetic CTA */
+        const ctaBtn=document.querySelector('a[href="mailto:hello@SAIKAT.com"]');
+        if(ctaBtn&&!isTouch){
+            ctaBtn.addEventListener('mousemove',e=>{const r=ctaBtn.getBoundingClientRect();gsap.to(ctaBtn,{x:(e.clientX-r.left-r.width/2)*.2,y:(e.clientY-r.top-r.height/2)*.2,duration:.3,ease:'power2.out'})});
+            ctaBtn.addEventListener('mouseleave',()=>{gsap.to(ctaBtn,{x:0,y:0,duration:.5,ease:'elastic.out(1,0.4)'})});
+        }
+    })();
+    </script>
+
+    <!-- ═══════════ THREE.JS 3D SCENE ═══════════ -->
+    <script type="module">
+    import * as THREE from 'three';
+
+    const gsap = window.gsap;
+    const ScrollTrigger = window.ScrollTrigger;
+    gsap.registerPlugin(ScrollTrigger);
+
+    /* Wait for preloader */
+    function initScene(){
+        /* ── Renderer ── */
+        const canvas = document.getElementById('bg3d');
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        /* ── Scene & Camera ── */
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+        camera.position.set(0, 3, 22);
+
+        /* ── Lights ── */
+        const ambientLight = new THREE.AmbientLight(0x222233, 0.3);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.PointLight(0xffeedd, 2.5, 120, 1.5);
+        sunLight.position.set(0, 0, 0);
+        scene.add(sunLight);
+
+        /* ── Utility: Canvas-based glow texture ── */
+        function makeGlowTex(inner, outer){
+            const c = document.createElement('canvas'); c.width = c.height = 256;
+            const ctx = c.getContext('2d');
+            const g = ctx.createRadialGradient(128,128,0,128,128,128);
+            g.addColorStop(0, inner);
+            g.addColorStop(0.35, outer);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g; ctx.fillRect(0,0,256,256);
+            return new THREE.CanvasTexture(c);
+        }
+
+        /* ── Star Field (shader-based, twinkling) ── */
+        const STAR_COUNT = 5000;
+        const sPos = new Float32Array(STAR_COUNT * 3);
+        const sSizes = new Float32Array(STAR_COUNT);
+        const sColors = new Float32Array(STAR_COUNT * 3);
+        const sPhases = new Float32Array(STAR_COUNT);
+
+        for(let i = 0; i < STAR_COUNT; i++){
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            const r = 35 + Math.random() * 55;
+            sPos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+            sPos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+            sPos[i*3+2] = r * Math.cos(phi);
+            sSizes[i] = 0.5 + Math.random() * 2.5;
+            sPhases[i] = Math.random() * 6.283;
+            const t = Math.random();
+            if(t > 0.95){ sColors[i*3]=0.7; sColors[i*3+1]=0.85; sColors[i*3+2]=1.0; }
+            else if(t > 0.88){ sColors[i*3]=1.0; sColors[i*3+1]=0.85; sColors[i*3+2]=0.6; }
+            else { sColors[i*3]=1.0; sColors[i*3+1]=1.0; sColors[i*3+2]=1.0; }
+        }
+
+        const starGeo = new THREE.BufferGeometry();
+        starGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+        starGeo.setAttribute('aStarSize', new THREE.BufferAttribute(sSizes, 1));
+        starGeo.setAttribute('aStarColor', new THREE.BufferAttribute(sColors, 3));
+        starGeo.setAttribute('aStarPhase', new THREE.BufferAttribute(sPhases, 1));
+
+        const starMat = new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 } },
+            vertexShader: `
+                attribute float aStarSize;
+                attribute vec3 aStarColor;
+                attribute float aStarPhase;
+                uniform float uTime;
+                varying vec3 vCol;
+                varying float vAlpha;
+                void main(){
+                    vCol = aStarColor;
+                    float tw = sin(uTime * 1.5 + aStarPhase) * 0.5 + 0.5;
+                    vAlpha = 0.4 + tw * 0.6;
+                    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+                    gl_PointSize = max(1.0, aStarSize * (180.0 / max(1.0, -mv.z)) * (0.6 + tw * 0.4));
+                    gl_Position = projectionMatrix * mv;
+                }
+            `,
+            fragmentShader: `
+                varying vec3 vCol;
+                varying float vAlpha;
+                void main(){
+                    float d = length(gl_PointCoord - vec2(0.5));
+                    if(d > 0.5) discard;
+                    float a = smoothstep(0.5, 0.05, d) * vAlpha;
+                    gl_FragColor = vec4(vCol, a);
+                }
+            `,
+            transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+        });
+        scene.add(new THREE.Points(starGeo, starMat));
+
+        /* ── Sun (custom shader for animated surface) ── */
+        const sunGeo = new THREE.IcosahedronGeometry(Math.max(0.01, 2.2), 12);
+        const sunMat = new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 } },
+            vertexShader: `
+                varying vec2 vTex;
+                varying vec3 vNorm;
+                void main(){
+                    vTex = uv;
+                    vNorm = normalize(normalMatrix * normal);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float uTime;
+                varying vec2 vTex;
+                varying vec3 vNorm;
+
+                vec2 hash22(vec2 p){ p=vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))); return -1.0+2.0*fract(sin(p)*43758.5453); }
+                float snoise(vec2 p){
+                    const float K1=0.366025404, K2=0.211324865;
+                    vec2 i=floor(p+(p.x+p.y)*K1);
+                    vec2 a=p-i+(i.x+i.y)*K2;
+                    float m=step(a.y,a.x);
+                    vec2 o=vec2(m,1.0-m);
+                    vec2 b=a-o+K2, c=a-1.0+2.0*K2;
+                    vec3 h=max(0.5-vec3(dot(a,a),dot(b,b),dot(c,c)),0.0);
+                    vec3 n=h*h*h*h*vec3(dot(a,hash22(i)),dot(b,hash22(i+o)),dot(c,hash22(i+1.0)));
+                    return dot(n,vec3(70.0));
+                }
+                float fbm(vec2 p){ float f=0.0,w=0.5; for(int i=0;i<5;i++){f+=w*snoise(p);p*=2.0;w*=0.5;} return f; }
+
+                void main(){
+                    float t = uTime * 0.1;
+                    float n = fbm(vTex * 3.5 + t) * 0.5 + 0.5;
+                    n += fbm(vTex * 7.0 - t * 0.7) * 0.25;
+                    n = clamp(n, 0.0, 1.0);
+
+                    vec3 white = vec3(1.0, 0.98, 0.88);
+                    vec3 yellow = vec3(1.0, 0.78, 0.18);
+                    vec3 orange = vec3(1.0, 0.38, 0.05);
+                    vec3 red = vec3(0.55, 0.08, 0.0);
+
+                    vec3 col = mix(red, orange, smoothstep(0.18, 0.35, n));
+                    col = mix(col, yellow, smoothstep(0.35, 0.55, n));
+                    col = mix(col, white, smoothstep(0.68, 0.88, n));
+
+                    float rim = pow(max(0.0, dot(vNorm, vec3(0.0, 0.0, 1.0))), 0.45);
+                    col *= rim;
+                    col += white * 0.2 * max(0.0, 1.0 - length(vTex - 0.5) * 1.8);
+
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `
+        });
+        const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+        scene.add(sunMesh);
+
+        /* Sun glow layers (sprites, additive blend) */
+        const glow1 = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTex('rgba(255,240,180,0.9)', 'rgba(255,180,50,0.3)'), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        glow1.scale.set(9, 9, 1);
+        scene.add(glow1);
+
+        const glow2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTex('rgba(255,160,30,0.4)', 'rgba(200,80,10,0.1)'), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        glow2.scale.set(16, 16, 1);
+        scene.add(glow2);
+
+        const glow3 = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTex('rgba(180,100,20,0.12)', 'rgba(100,40,5,0.02)'), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        glow3.scale.set(28, 28, 1);
+        scene.add(glow3);
+
+        /* ── Planets ── */
+        const planets = [];
+
+        function makePlanet(radius, orbitR, speed, color, metalness, roughness, hasRing){
+            const group = new THREE.Group();
+            const geo = new THREE.SphereGeometry(Math.max(0.01, radius), 24, 24);
+            const mat = new THREE.MeshStandardMaterial({ color, metalness, roughness });
+            const mesh = new THREE.Mesh(geo, mat);
+            group.add(mesh);
+
+            if(hasRing){
+                const ringGeo = new THREE.RingGeometry(Math.max(0.01, radius * 1.5), Math.max(0.02, radius * 2.4), 64);
+                const ringMat = new THREE.MeshBasicMaterial({ color: 0xddaa44, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI * 0.42;
+                mesh.add(ring);
+            }
+
+            /* Orbit path ring */
+            const orbitGeo = new THREE.TorusGeometry(Math.max(0.01, orbitR), 0.012, 8, 128);
+            const orbitMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06 });
+            const orbit = new THREE.Mesh(orbitGeo, orbitMat);
+            orbit.rotation.x = Math.PI / 2;
+            scene.add(orbit);
+
+            scene.add(group);
+            return { group, mesh, orbitR, speed, angle: Math.random() * Math.PI * 2 };
+        }
+
+        planets.push(makePlanet(0.28, 5.5, 0.6, 0x999999, 0.3, 0.8, false));   // Mercury
+        planets.push(makePlanet(0.5, 8.5, 0.4, 0xcc5533, 0.1, 0.9, false));      // Mars
+        planets.push(makePlanet(0.95, 13.5, 0.25, 0xddaa44, 0.2, 0.7, true));     // Saturn
+        planets.push(makePlanet(0.55, 19, 0.15, 0x3366aa, 0.1, 0.6, false));      // Neptune
+
+        /* ── Asteroid Belt (particles between Mars and Saturn) ── */
+        const AST_COUNT = 800;
+        const astPos = new Float32Array(AST_COUNT * 3);
+        const astSizes = new Float32Array(AST_COUNT);
+        for(let i = 0; i < AST_COUNT; i++){
+            const angle = Math.random() * Math.PI * 2;
+            const r = 10 + Math.random() * 2.5;
+            const y = (Math.random() - 0.5) * 0.8;
+            astPos[i*3] = Math.cos(angle) * r;
+            astPos[i*3+1] = y;
+            astPos[i*3+2] = Math.sin(angle) * r;
+            astSizes[i] = 0.3 + Math.random() * 0.8;
+        }
+        const astGeo = new THREE.BufferGeometry();
+        astGeo.setAttribute('position', new THREE.BufferAttribute(astPos, 3));
+        astGeo.setAttribute('aStarSize', new THREE.BufferAttribute(astSizes, 1));
+        const astMat = new THREE.ShaderMaterial({
+            uniforms: { uTime: { value: 0 } },
+            vertexShader: `
+                attribute float aStarSize;
+                void main(){
+                    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+                    gl_PointSize = max(1.0, aStarSize * (120.0 / max(1.0, -mv.z)));
+                    gl_Position = projectionMatrix * mv;
+                }
+            `,
+            fragmentShader: `
+                void main(){
+                    float d = length(gl_PointCoord - vec2(0.5));
+                    if(d > 0.5) discard;
+                    float a = smoothstep(0.5, 0.15, d) * 0.5;
+                    gl_FragColor = vec4(0.7, 0.65, 0.55, a);
+                }
+            `,
+            transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+        });
+        const asteroidBelt = new THREE.Points(astGeo, astMat);
+        scene.add(asteroidBelt);
+
+        /* ── Floating Debris (small geometric shapes) ── */
+        const debrisGroup = new THREE.Group();
+        const debrisGeos = [
+            new THREE.IcosahedronGeometry(Math.max(0.01, 0.12), 0),
+            new THREE.OctahedronGeometry(Math.max(0.01, 0.1), 0),
+            new THREE.TetrahedronGeometry(Math.max(0.01, 0.1), 0)
+        ];
+        const debrisMats = [
+            new THREE.MeshStandardMaterial({ color: 0x556655, metalness: 0.5, roughness: 0.6 }),
+            new THREE.MeshStandardMaterial({ color: 0x665544, metalness: 0.4, roughness: 0.7 }),
+            new THREE.MeshStandardMaterial({ color: 0x445566, metalness: 0.3, roughness: 0.5 })
+        ];
+        const debrisData = [];
+        for(let i = 0; i < 25; i++){
+            const geo = debrisGeos[i % 3];
+            const mat = debrisMats[i % 3];
+            const mesh = new THREE.Mesh(geo, mat);
+            const r = 8 + Math.random() * 30;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            mesh.position.set(r*Math.sin(phi)*Math.cos(theta), r*Math.sin(phi)*Math.sin(theta)*0.4, r*Math.cos(phi));
+            mesh.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
+            debrisGroup.add(mesh);
+            debrisData.push({ mesh, rx: (Math.random()-0.5)*0.01, ry: (Math.random()-0.5)*0.01, rz: (Math.random()-0.5)*0.01, drift: (Math.random()-0.5)*0.002 });
+        }
+        scene.add(debrisGroup);
+
+        /* ── Nebula Clouds (large faint colored sprites) ── */
+        function makeNebula(r,g,b,x,y,z,scale){
+            const c = document.createElement('canvas'); c.width = c.height = 256;
+            const ctx = c.getContext('2d');
+            const grad = ctx.createRadialGradient(128,128,0,128,128,128);
+            grad.addColorStop(0, `rgba(${r},${g},${b},0.12)`);
+            grad.addColorStop(0.5, `rgba(${r},${g},${b},0.04)`);
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad; ctx.fillRect(0,0,256,256);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+            sprite.position.set(x,y,z);
+            sprite.scale.set(scale, scale, 1);
+            scene.add(sprite);
+            return sprite;
+        }
+        makeNebula(80, 40, 120, -35, 10, -40, 40);
+        makeNebula(30, 80, 100, 40, -15, -50, 35);
+        makeNebula(120, 60, 20, 20, 20, 50, 30);
+        makeNebula(40, 100, 80, -30, -20, 45, 25);
+
+        /* ── Eclipse Moon ── */
+        const eclipseGroup = new THREE.Group();
+        const moonGeo = new THREE.SphereGeometry(Math.max(0.01, 2.35), 48, 48);
+        const moonMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+        eclipseGroup.add(moonMesh);
+
+        /* Corona glow */
+        const coronaTex = makeGlowTex('rgba(255,250,230,0.9)', 'rgba(255,140,30,0.25)');
+        const corona = new THREE.Sprite(new THREE.SpriteMaterial({ map: coronaTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        corona.scale.set(7, 7, 1);
+        corona.material.opacity = 0;
+        eclipseGroup.add(corona);
+
+        /* Outer corona (red streamers) */
+        const coronaTex2 = makeGlowTex('rgba(255,100,20,0.5)', 'rgba(180,30,5,0.08)');
+        const corona2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: coronaTex2, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        corona2.scale.set(12, 12, 1);
+        corona2.material.opacity = 0;
+        eclipseGroup.add(corona2);
+
+        eclipseGroup.position.set(60, 0, 2);
+        scene.add(eclipseGroup);
+
+        /* ── Scroll-Driven 3D Animation ── */
+        const camBasePos = { x: 0, y: 3, z: 22 };
+        const scrollTL = gsap.timeline({
+            scrollTrigger: {
+                trigger: '#mainContent',
+                start: 'top top',
+                end: 'bottom bottom',
+                scrub: 1.2,
+            }
+        });
+
+        /* Camera journey through the solar system */
+        scrollTL
+            .to(camBasePos, { x: 0, y: 6, z: 30, duration: 0.15, ease: 'none' }, 0)
+            .to(camBasePos, { x: 12, y: 10, z: 18, duration: 0.15, ease: 'none' }, 0.2)
+            .to(camBasePos, { x: 22, y: 6, z: -5, duration: 0.15, ease: 'none' }, 0.4)
+            .to(camBasePos, { x: 8, y: 2, z: -18, duration: 0.1, ease: 'none' }, 0.55)
+            /* Eclipse approach */
+            .to(camBasePos, { x: 0, y: 1, z: 22, duration: 0.08, ease: 'none' }, 0.68)
+            /* Eclipse: moon crosses */
+            .to(eclipseGroup.position, { x: 0, duration: 0.06, ease: 'power2.inOut' }, 0.72)
+            .to(corona.material, { opacity: 1, duration: 0.03 }, 0.74)
+            .to(corona2.material, { opacity: 0.8, duration: 0.03 }, 0.745)
+            .to(sunLight, { intensity: 0.3, duration: 0.04 }, 0.73)
+            .to(glow1.scale, { x: 3, y: 3, duration: 0.04 }, 0.73)
+            .to(glow2.scale, { x: 5, y: 5, duration: 0.04 }, 0.73)
+            /* Hold totality */
+            .to({}, { duration: 0.04 })
+            /* Eclipse exit */
+            .to(eclipseGroup.position, { x: -60, duration: 0.06, ease: 'power2.in' }, 0.84)
+            .to(corona.material, { opacity: 0, duration: 0.04 }, 0.86)
+            .to(corona2.material, { opacity: 0, duration: 0.04 }, 0.86)
+            .to(sunLight, { intensity: 2.5, duration: 0.04 }, 0.86)
+            .to(glow1.scale, { x: 9, y: 9, duration: 0.04 }, 0.86)
+            .to(glow2.scale, { x: 16, y: 16, duration: 0.04 }, 0.86)
+            /* Pull back for full view */
+            .to(camBasePos, { x: 0, y: 18, z: 42, duration: 0.14, ease: 'none' }, 0.9);
+
+        /* Eclipse label visibility */
+        const eclipseLabel = document.getElementById('eclipseLabel');
+        ScrollTrigger.create({
+            trigger: '#mainContent',
+            start: 'top top',
+            end: 'bottom bottom',
+            onUpdate: self => {
+                const p = self.progress;
+                if(p > 0.75 && p < 0.84){
+                    eclipseLabel.style.opacity = Math.min(1, (p - 0.75) / 0.02);
+                } else {
+                    eclipseLabel.style.opacity = Math.max(0, 1 - (p < 0.75 ? (0.75 - p) / 0.02 : (p - 0.84) / 0.02));
+                }
+            }
+        });
+
+        /* ── Animation Loop ── */
+        const clock = new THREE.Clock();
+
+        function animate(){
+            requestAnimationFrame(animate);
+            const t = clock.getElapsedTime();
+
+            /* Update shader uniforms */
+            sunMat.uniforms.uTime.value = t;
+            starMat.uniforms.uTime.value = t;
+            astMat.uniforms.uTime.value = t;
+
+            /* Rotate planets */
+            planets.forEach(p => {
+                p.angle += p.speed * 0.003;
+                p.group.position.set(Math.cos(p.angle) * p.orbitR, 0, Math.sin(p.angle) * p.orbitR);
+                p.mesh.rotation.y += 0.005;
+            });
+
+            /* Slowly rotate asteroid belt */
+            asteroidBelt.rotation.y += 0.0003;
+
+            /* Rotate debris */
+            debrisData.forEach(d => {
+                d.mesh.rotation.x += d.rx;
+                d.mesh.rotation.y += d.ry;
+                d.mesh.rotation.z += d.rz;
+                d.mesh.position.y += d.drift;
+            });
+
+            /* Sun subtle pulse */
+            const pulse = 1 + Math.sin(t * 0.8) * 0.02;
+            sunMesh.scale.set(pulse, pulse, pulse);
+
+            /* Camera: scroll position + mouse parallax */
+            const mx = window._mouseX || 0;
+            const my = window._mouseY || 0;
+            camera.position.x = camBasePos.x + mx * 1.5;
+            camera.position.y = camBasePos.y - my * 1.0;
+            camera.position.z = camBasePos.z;
+            camera.lookAt(0, 0, 0);
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        /* ── Resize ── */
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    }
+
+    /* Start 3D scene after preloader finishes */
+    if(document.getElementById('preloader').style.display === 'none'){
+        initScene();
+    } else {
+        window.addEventListener('preloader-done', initScene);
+    }
+    </script>
+</body>
+</html>
