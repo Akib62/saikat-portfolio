@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAIKAT — Civil Engineering</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { bg:'#0a0a0a', fg:'#e8e6e3', muted:'#6b6b6b', accent:'#c8ff00', card:'#111111', border:'#1c1c1c' },
+                    fontFamily: { heading:["'Instrument Serif'","serif"], body:["'Barlow'","sans-serif"] }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root{--bg:#0a0a0a;--fg:#e8e6e3;--muted:#6b6b6b;--accent:#c8ff00;--card:#111111;--border:#1c1c1c}
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        html{background:var(--bg)}
+        body{background:var(--bg);color:var(--fg);font-family:'Barlow',sans-serif;overflow-x:hidden;cursor:none;overflow-wrap:break-word;word-break:break-word}
+        .font-heading{font-style:italic}
+        ::selection{background:var(--accent);color:var(--bg)}
+        ::-webkit-scrollbar{width:0}
+        #bg3d{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+        .vignette{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,transparent 20%,rgba(10,10,10,0.75) 100%)}
+        .glass{background:rgba(10,10,10,0.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+        .glass-medium{background:rgba(10,10,10,0.4);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+        .glass-light{background:rgba(10,10,10,0.25);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+        .glass-clear{background:transparent}
+        .nav-glass{background:rgba(10,10,10,0);backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);border-bottom:1px solid rgba(255,255,255,0);transition:background .5s cubic-bezier(.25,.46,.45,.94),backdrop-filter .5s cubic-bezier(.25,.46,.45,.94),-webkit-backdrop-filter .5s cubic-bezier(.25,.46,.45,.94),border-color .5s cubic-bezier(.25,.46,.45,.94)}
+        .nav-glass.scrolled{background:rgba(10,10,10,0.72);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.06)}
+        .preloader{position:fixed;inset:0;background:var(--bg);z-index:10000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2rem}
+        .preloader-word{overflow:hidden}
+        .preloader-word span{display:block;transform:translateY(110%);font-family:'Instrument Serif',serif;font-style:italic;font-size:clamp(1.5rem,6vw,4.5rem);font-weight:400;letter-spacing:0.04em}
+        .preloader-bar-track{width:200px;height:1px;background:var(--border);position:relative;overflow:hidden}
+        .preloader-bar-fill{position:absolute;top:0;left:0;height:100%;width:0%;background:var(--accent)}
+        .preloader-counter{font-family:'Barlow',sans-serif;font-size:0.8rem;font-weight:400;letter-spacing:0.2em;color:var(--muted)}
+        .cursor-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:difference}
+        .cursor-ring{width:40px;height:40px;border:1px solid rgba(200,255,0,0.5);border-radius:50%;position:fixed;top:0;left:0;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .35s cubic-bezier(.25,.46,.45,.94),height .35s cubic-bezier(.25,.46,.45,.94),border-color .35s,background .35s}
+        .cursor-ring.hovering{width:70px;height:70px;background:rgba(200,255,0,0.08);border-color:var(--accent)}
+        .noise{position:fixed;inset:0;pointer-events:none;z-index:9990;opacity:0.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+        .word-reveal{overflow:hidden;display:inline-block}
+        .word-reveal span{display:inline-block;transform:translateY(105%)}
+        .line-reveal{overflow:hidden}
+        .line-reveal > *{transform:translateY(105%)}
+        .hero-line{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;line-height:.95;letter-spacing:-0.01em;overflow:hidden;display:block}
+        .hero-line span{display:block;transform:translateY(105%)}
+        .hero-line-sm{font-size:clamp(.55rem,1.1vw,.85rem);letter-spacing:.2em;color:var(--muted);font-weight:400}
+        .hero-line-lg{font-size:clamp(2rem,10vw,11rem)}
+        .marquee-track{display:flex;width:max-content;animation:marquee 28s linear infinite}
+        @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+        .project-card{position:relative;overflow:hidden}
+        .project-card .img-wrap{overflow:hidden}
+        .project-card img{transition:transform 1s cubic-bezier(.25,.46,.45,.94);will-change:transform;transform:scale(1.15)}
+        .project-card:hover img{transform:scale(1)}
+        .project-card .card-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(10,10,10,.85) 0%,transparent 60%);opacity:0;transition:opacity .5s}
+        .project-card:hover .card-overlay{opacity:1}
+        .project-card .card-info{position:absolute;bottom:0;left:0;right:0;padding:1.2rem;transform:translateY(20px);opacity:0;transition:all .5s cubic-bezier(.25,.46,.45,.94)}
+        .project-card:hover .card-info{transform:translateY(0);opacity:1}
+        .horizontal-section{overflow:hidden}
+        .h-track{display:flex;width:fit-content;will-change:transform}
+        .h-panel{width:100vw;height:100vh;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:1.5rem;position:relative}
+        .h-panel-inner{display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;max-width:1100px;width:100%;align-items:center}
+        .service-row{border-bottom:1px solid var(--border);padding:1.25rem 0;display:flex;align-items:center;justify-content:space-between;transition:padding-left .4s,border-color .4s}
+        .service-row:hover{padding-left:1.5rem;border-color:var(--accent)}
+        .service-row .svc-arrow{transform:translateX(-12px);opacity:0;transition:all .4s cubic-bezier(.25,.46,.45,.94);flex-shrink:0}
+        .service-row:hover .svc-arrow{transform:translateX(0);opacity:1}
+        .nav-link{position:relative;overflow:hidden;display:inline-block}
+        .nav-link .nl-top{transition:transform .4s cubic-bezier(.76,0,.24,1);display:block}
+        .nav-link .nl-bot{position:absolute;top:0;left:0;transform:translateY(105%);transition:transform .4s cubic-bezier(.76,0,.24,1);display:block}
+        .nav-link:hover .nl-top{transform:translateY(-105%)}
+        .nav-link:hover .nl-bot{transform:translateY(0)}
+        .menu-overlay{position:fixed;inset:0;background:var(--bg);z-index:9000;display:flex;align-items:center;justify-content:center;clip-path:circle(0% at calc(100% - 3rem) 2.5rem);transition:clip-path .8s cubic-bezier(.76,0,.24,1);pointer-events:none}
+        .menu-overlay.open{clip-path:circle(150% at calc(100% - 3rem) 2.5rem);pointer-events:all}
+        .menu-overlay .mi{overflow:hidden}
+        .menu-overlay .mi-inner{transform:translateY(105%);transition:transform .7s cubic-bezier(.76,0,.24,1)}
+        .menu-overlay.open .mi-inner{transform:translateY(0)}
+        .menu-close{position:absolute;top:2rem;right:1.5rem;width:48px;height:48px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10}
+        .menu-close .cl-line{position:absolute;width:28px;height:1px;background:var(--fg);transition:transform .5s cubic-bezier(.76,0,.24,1),opacity .3s}
+        .menu-close .cl-line:nth-child(1){transform:rotate(0deg)}
+        .menu-close .cl-line:nth-child(2){transform:rotate(0deg)}
+        .menu-overlay.open .menu-close .cl-line:nth-child(1){transform:rotate(45deg)}
+        .menu-overlay.open .menu-close .cl-line:nth-child(2){transform:rotate(-45deg)}
+        .menu-close:hover .cl-line{background:var(--accent)}
+        .scroll-indicator{animation:scrollBounce 2s ease-in-out infinite}
+        @keyframes scrollBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(10px)}}
+        .stat-glow{position:absolute;width:180px;height:180px;border-radius:50%;filter:blur(70px);background:var(--accent);opacity:.08;pointer-events:none}
+        .flink{position:relative;display:inline-block}
+        .flink::after{content:'';position:absolute;bottom:-2px;left:0;width:0;height:1px;background:var(--accent);transition:width .4s cubic-bezier(.25,.46,.45,.94)}
+        .flink:hover::after{width:100%}
+        .lazy-img{opacity:0;transition:opacity .8s}
+        .lazy-img.loaded{opacity:1}
+        .eclipse-label{position:fixed;z-index:5;pointer-events:none;opacity:0;font-family:'Instrument Serif',serif;font-style:italic;font-size:.65rem;letter-spacing:.25em;color:var(--accent);text-transform:uppercase;transition:opacity .6s;white-space:nowrap}
+        .form-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--fg);padding:0.85rem 1rem;font-family:'Barlow',sans-serif;font-size:0.9rem;font-weight:400;outline:none;transition:border-color .3s,background .3s;border-radius:2px}
+        .form-input:focus{border-color:var(--accent);background:rgba(200,255,0,0.03)}
+        .form-input::placeholder{color:var(--muted);font-size:0.82rem}
+        .form-input.error{border-color:#ff4444;background:rgba(255,68,68,0.05)}
+        .form-error{color:#ff6666;font-size:0.7rem;margin-top:0.3rem;display:none}
+        .form-error.visible{display:block}
+        .form-checkbox{display:none}
+        .form-checkbox-custom{width:18px;height:18px;border:1px solid var(--border);background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .25s;cursor:pointer;border-radius:1px}
+        .form-checkbox:checked+.form-checkbox-custom{background:var(--accent);border-color:var(--accent)}
+        .form-checkbox:checked+.form-checkbox-custom svg{opacity:1}
+        .form-checkbox-custom svg{opacity:0;transition:opacity .2s}
+        .form-submit{width:100%;background:var(--accent);color:var(--bg);border:none;padding:0.95rem 2rem;font-family:'Barlow',sans-serif;font-weight:600;font-size:0.82rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;transition:all .4s cubic-bezier(.25,.46,.45,.94);border-radius:2px}
+        .form-submit:hover{background:#d4ff33;transform:translateY(-1px);box-shadow:0 8px 30px rgba(200,255,0,0.2)}
+        .form-submit:active{transform:translateY(0)}
+        .form-submit:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none}
+        .form-toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;padding:0.9rem 1.3rem;border-radius:3px;font-size:0.82rem;transform:translateY(120%);opacity:0;transition:all .5s cubic-bezier(.25,.46,.45,.94);max-width:320px}
+        .form-toast.show{transform:translateY(0);opacity:1}
+        .form-toast.success{background:var(--accent);color:var(--bg)}
+        .form-toast.error-toast{background:#ff4444;color:#fff}
+        .contact-image-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(10,10,10,0.92) 0%,rgba(10,10,10,0.35) 40%,transparent 70%)}
+        .form-glass{background:rgba(10,10,10,0.65);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+        .footer-video-section{position:relative;width:100%;overflow:hidden;background:var(--bg)}
+        .footer-video-section video{width:100%;height:100%;object-fit:cover;display:block}
+        .footer-video-overlay{position:absolute;inset:0;background:linear-gradient(to top,var(--bg) 0%,rgba(10,10,10,0.6) 40%,rgba(10,10,10,0.3) 70%,transparent 100%);pointer-events:none}
+        .footer-video-overlay-top{position:absolute;top:0;left:0;right:0;height:80px;background:linear-gradient(to bottom,var(--bg),transparent);pointer-events:none}
+        @media(max-width:1024px){.h-panel-inner{grid-template-columns:1fr!important;gap:1.5rem!important;text-align:center}.h-panel-inner > div:last-child{order:-1}}
+        @media(max-width:768px){.cursor-dot,.cursor-ring{display:none!important}body{cursor:auto}.h-panel{padding:1rem!important}.service-row{flex-direction:column;align-items:flex-start;gap:0.5rem}.eclipse-label{display:none}.contact-form-grid{grid-template-columns:1fr!important}.contact-image-col{min-height:40vh!important;order:-1}.form-toast{left:1rem;right:1rem;max-width:none;bottom:1rem}.footer-video-section{height:40vh!important}.menu-close{top:1.5rem;right:1rem;width:44px;height:44px}.menu-close .cl-line{width:24px}}
+        @media(max-width:480px){.hero-line-lg{font-size:clamp(1.7rem,14vw,3.5rem);letter-spacing:-0.01em}.hero-line-sm{letter-spacing:.1em;font-size:.5rem}}
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}.marquee-track{animation:none!important}}
+    </style>
+</head>
+<body>
+    <div class="preloader" id="preloader">
+        <div class="preloader-word"><span>SAIKAT</span></div>
+        <div class="preloader-bar-track"><div class="preloader-bar-fill" id="preloaderBar"></div></div>
+        <div class="preloader-counter" id="preloaderCount">0%</div>
+    </div>
+    <div class="cursor-dot" id="cursorDot"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+    <div class="noise" aria-hidden="true"></div>
+    <canvas id="bg3d"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="eclipse-label" id="eclipseLabel" style="top:50%;left:50%;transform:translate(-50%,-50%)">Lunar Alignment</div>
+    <div class="form-toast" id="formToast"></div>
+
+    <div class="menu-overlay" id="menuOverlay" role="dialog" aria-label="Navigation menu">
+        <button class="menu-close" aria-label="Close menu" onclick="closeMenu()">
+            <span class="cl-line"></span>
+            <span class="cl-line"></span>
+        </button>
+        <nav class="text-center space-y-5 px-4">
+            <div class="mi"><div class="mi-inner" style="transition-delay:.05s"><a href="#work" class="font-heading text-2xl sm:text-3xl md:text-6xl font-normal tracking-wider hover:text-accent transition-colors block" onclick="closeMenu()">Projects</a></div></div>
+            <div class="mi"><div class="mi-inner" style="transition-delay:.1s"><a href="#about" class="font-heading text-2xl sm:text-3xl md:text-6xl font-normal tracking-wider hover:text-accent transition-colors block" onclick="closeMenu()">About</a></div></div>
+            <div class="mi"><div class="mi-inner" style="transition-delay:.15s"><a href="#services" class="font-heading text-2xl sm:text-3xl md:text-6xl font-normal tracking-wider hover:text-accent transition-colors block" onclick="closeMenu()">Services</a></div></div>
+            <div class="mi"><div class="mi-inner" style="transition-delay:.2s"><a href="#contact" class="font-heading text-2xl sm:text-3xl md:text-6xl font-normal tracking-wider hover:text-accent transition-colors block" onclick="closeMenu()">Contact</a></div></div>
+            <div class="mi mt-10"><div class="mi-inner" style="transition-delay:.3s"><p class="text-muted text-xs sm:text-sm tracking-widest font-body">INFO@SAIKAT.COM</p></div></div>
+        </nav>
+    </div>
+
+    <main id="mainContent" style="opacity:0;position:relative;z-index:2">
+        <header id="siteNav" class="fixed top-0 left-0 w-full z-[8000] nav-glass" role="banner">
+            <div class="flex items-center justify-between px-4 sm:px-5 md:px-12 py-4 md:py-6">
+                <a href="#" class="font-heading text-[0.65rem] sm:text-xs md:text-base font-normal tracking-[0.1em] sm:tracking-[0.2em] text-fg" aria-label="SAIKAT home">SAIKAT</a>
+                <div class="hidden md:flex items-center gap-7 lg:gap-10">
+                    <a href="#work" class="nav-link font-body text-[0.65rem] tracking-[0.15em] text-fg uppercase font-medium"><span class="nl-top">Projects</span><span class="nl-bot text-accent">Projects</span></a>
+                    <a href="#about" class="nav-link font-body text-[0.65rem] tracking-[0.15em] text-fg uppercase font-medium"><span class="nl-top">About</span><span class="nl-bot text-accent">About</span></a>
+                    <a href="#services" class="nav-link font-body text-[0.65rem] tracking-[0.15em] text-fg uppercase font-medium"><span class="nl-top">Services</span><span class="nl-bot text-accent">Services</span></a>
+                    <a href="#contact" class="nav-link font-body text-[0.65rem] tracking-[0.15em] text-fg uppercase font-medium"><span class="nl-top">Contact</span><span class="nl-bot text-accent">Contact</span></a>
+                </div>
+                <button class="w-9 h-9 flex flex-col items-end justify-center gap-1.5 md:hidden" aria-label="Open menu" onclick="toggleMenu()">
+                    <span class="block w-6 h-[1px] bg-fg transition-all origin-center" id="menuLine1"></span>
+                    <span class="block w-4 h-[1px] bg-fg transition-all" id="menuLine2"></span>
+                </button>
+                <button class="hidden md:block font-body text-[0.65rem] tracking-[0.15em] text-fg uppercase font-medium hover:text-accent transition-colors cursor-none" onclick="toggleMenu()" aria-label="Open menu">Menu +</button>
+            </div>
+        </header>
+
+        <section class="relative min-h-screen flex flex-col justify-center px-4 sm:px-5 md:px-12 py-28 md:py-0 glass-clear" aria-label="Hero">
+            <div class="mb-2 md:mb-4"><div class="hero-line hero-line-sm"><span>We Engineer</span></div></div>
+            <div><div class="hero-line hero-line-lg"><span>Infra-</span></div></div>
+            <div><div class="hero-line hero-line-lg"><span>Structure</span></div></div>
+            <div><div class="hero-line hero-line-lg"><span>That Lasts</span></div></div>
+            <div class="mt-5 md:mt-12 max-w-md line-reveal">
+                <p class="text-muted text-xs sm:text-sm md:text-base leading-relaxed font-body font-light">Leading civil engineering firm delivering bridges, highways, structures, and urban infrastructure that stand the test of time.</p>
+            </div>
+            <div class="absolute bottom-7 sm:bottom-10 left-4 sm:left-5 md:left-12 flex items-center gap-3 scroll-indicator">
+                <div class="w-[1px] h-9 bg-border relative overflow-hidden"><div class="w-full h-1/2 bg-accent absolute top-0 animate-pulse"></div></div>
+                <span class="text-[0.55rem] sm:text-[0.65rem] tracking-[0.2em] text-muted uppercase font-body">Scroll</span>
+            </div>
+            <div class="absolute bottom-7 sm:bottom-10 right-4 sm:right-5 md:right-12"><span class="text-[0.55rem] sm:text-[0.65rem] tracking-[0.2em] text-muted uppercase font-body">Est. 1998</span></div>
+        </section>
+
+        <section class="py-5 md:py-7 border-t border-b border-border overflow-hidden glass-light" aria-hidden="true">
+            <div class="marquee-track">
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Bridges</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Highways</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Dams</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Structures</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Tunnels</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Urban</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Bridges</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Highways</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Dams</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Structures</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Tunnels</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+                <span class="font-heading text-lg sm:text-xl md:text-3xl font-normal tracking-wider text-fg whitespace-nowrap mx-5 md:mx-8">Urban</span><span class="text-accent mx-2 md:mx-4">&#9670;</span>
+            </div>
+        </section>
+
+        <section id="work" class="px-4 sm:px-5 md:px-12 py-16 md:py-40 glass" aria-label="Featured projects">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-10 md:mb-24 gap-3">
+                <div>
+                    <span class="block mb-2 md:mb-4 reveal-anim text-accent text-[0.55rem] sm:text-[0.6rem] tracking-[0.2em] uppercase font-body">Featured Projects</span>
+                    <h2 class="font-heading text-xl sm:text-2xl md:text-5xl font-normal tracking-tight line-reveal">Landmark<br>Structures</h2>
+                </div>
+                <span class="hidden sm:block text-muted text-xs sm:text-sm tracking-widest reveal-anim font-body">1998 — 2024</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                <div class="project-card group reveal-anim" data-cursor="view"><div class="img-wrap aspect-[4/5]"><img src="https://picsum.photos/seed/civil-bridge1/800/1000" alt="Meridian Bridge" class="lazy-img w-full h-full object-cover" loading="lazy"></div><div class="card-overlay"></div><div class="card-info"><span class="text-accent text-[0.6rem] tracking-[0.18em] uppercase block mb-1.5 font-body font-medium">Bridge / 1.2km</span><h3 class="font-heading text-base sm:text-lg md:text-xl font-normal tracking-wider">Meridian Bridge</h3></div></div>
+                <div class="project-card group reveal-anim" data-cursor="view"><div class="img-wrap aspect-[4/5] md:mt-16 lg:mt-24"><img src="https://picsum.photos/seed/civil-dam2/800/1000" alt="Nexus Dam" class="lazy-img w-full h-full object-cover" loading="lazy"></div><div class="card-overlay"></div><div class="card-info"><span class="text-accent text-[0.6rem] tracking-[0.18em] uppercase block mb-1.5 font-body font-medium">Dam / 180m</span><h3 class="font-heading text-base sm:text-lg md:text-xl font-normal tracking-wider">Nexus Dam</h3></div></div>
+                <div class="project-card group md:col-span-2 reveal-anim" data-cursor="view"><div class="img-wrap aspect-[16/7] sm:aspect-[16/8]"><img src="https://picsum.photos/seed/civil-highway3/1600/700" alt="Aether Highway" class="lazy-img w-full h-full object-cover" loading="lazy"></div><div class="card-overlay"></div><div class="card-info"><span class="text-accent text-[0.6rem] tracking-[0.18em] uppercase block mb-1.5 font-body font-medium">Highway / 340km</span><h3 class="font-heading text-base sm:text-lg md:text-xl font-normal tracking-wider">Aether Expressway</h3></div></div>
+            </div>
+        </section>
+
+        <section class="horizontal-section glass-light" aria-label="Case studies">
+            <div class="h-track" id="hTrack">
+                <div class="h-panel"><div class="h-panel-inner"><div><span class="tag block mb-3 md:mb-6 text-accent text-[0.55rem] sm:text-[0.6rem] tracking-[0.2em] uppercase font-body">Case Study 01</span><h3 class="font-heading text-xl sm:text-2xl md:text-4xl lg:text-5xl font-normal tracking-tight mb-3 md:mb-6 leading-tight">Solaris<br>Suspension Bridge</h3><p class="text-muted text-xs sm:text-sm md:text-base leading-relaxed max-w-sm mx-auto md:mx-0 font-body font-light">A 2.4km cable-stayed bridge spanning the Solaris river delta, designed for seismic zone 4 conditions and 200-year flood cycles.</p></div><div class="overflow-hidden rounded-sm"><img src="https://picsum.photos/seed/case-bridge/700/500" alt="Solaris Bridge" class="lazy-img w-full h-auto object-cover" loading="lazy"></div></div></div>
+                <div class="h-panel"><div class="h-panel-inner"><div><span class="tag block mb-3 md:mb-6 text-accent text-[0.55rem] sm:text-[0.6rem] tracking-[0.2em] uppercase font-body">Case Study 02</span><h3 class="font-heading text-xl sm:text-2xl md:text-4xl lg:text-5xl font-normal tracking-tight mb-3 md:mb-6 leading-tight">Vertex<br>Traffic Interchange</h3><p class="text-muted text-xs sm:text-sm md:text-base leading-relaxed max-w-sm mx-auto md:mx-0 font-body font-light">A five-level stacked interchange handling 180,000 vehicles daily, with integrated stormwater management and noise attenuation.</p></div><div class="overflow-hidden rounded-sm"><img src="https://picsum.photos/seed/case-interchange/700/500" alt="Vertex Interchange" class="lazy-img w-full h-auto object-cover" loading="lazy"></div></div></div>
+                <div class="h-panel"><div class="h-panel-inner"><div><span class="tag block mb-3 md:mb-6 text-accent text-[0.55rem] sm:text-[0.6rem] tracking-[0.2em] uppercase font-body">Case Study 03</span><h3 class="font-heading text-xl sm:text-2xl md:text-4xl lg:text-5xl font-normal tracking-tight mb-3 md:mb-6 leading-tight">Terraform<br>Underground Tunnel</h3><p class="text-muted text-xs sm:text-sm md:text-base leading-relaxed max-w-sm mx-auto md:mx-0 font-body font-light">An 8.6km twin-bore tunnel through mountainous terrain, featuring NATM excavation and advanced ventilation systems.</p></div><div class="overflow-hidden rounded-sm"><img src="https://picsum.photos/seed/case-tunnel/700/500" alt="Terraform Tunnel" class="lazy-img w-full h-auto object-cover" loading="lazy"></div></div></div>
+                <div class="h-panel"><div class="h-panel-inner"><div><span class="tag block mb-3 md:mb-6 text-accent text-[0.55rem] sm:text-[0.6rem] tracking-[0.2em] uppercase font-body">Case Study 04</span><h3 class="font-heading text-xl sm:text-2xl md:text-4xl lg:text-5xl font-normal tracking-tight mb-3 md:mb-6 leading-tight">Aquapoint<br>Coastal Defense</h3><p class="text-muted text-xs sm:text-sm md:text-base leading-relaxed max-w-sm mx-auto md:mx-0 font-body font-light">A 12km integrated coastal protection system combining seawalls, breakwaters, and mangrove restoration to safeguard 50,000 residents.</p></div><div class="overflow-hidden rounded-sm"><img src="https://picsum.photos/seed/case-coastal/700/500" alt="Aquapoint Coastal" class="lazy-img w-full h-auto object-cover" loading="lazy"></div></div></div>
+            </div>
+        </section>
+
+        <section id="about" class="px-4 sm:px-5 md:px-12 py-20 md:py-48 glass" aria-label="About">
+            <div class="max-w-5xl">
+                <span class="block mb-6 md:mb-10 reveal-anim text-accent text-[0.55rem] sm:text-[0.6rem] tracking-[0.2em] uppercase font-body">Our Engineering Philosophy</span>
+                <p class="font-heading text-lg sm:text-xl md:text-4xl lg:text-5xl font-normal leading-[1.25] md:leading-[1.15] tracking-tight" id="manifestoText">We believe infrastructure is the backbone of civilization. Every beam, every joint, every cubic meter of concrete carries the weight of progress. We don't just build structures — we engineer the foundations upon which communities thrive for generations.</p>
+            </div>
+        </section>
+
+        <section class="px-4 sm:px-5 md:px-12 py-16 md:py-32 border-t border-b border-border glass-light" aria-label="Statistics">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-8">
+                <div class="relative reveal-anim"><div class="stat-glow -top-8 -left-8"></div><span class="stat-number block text-2xl sm:text-3xl md:text-5xl font-bold font-body" data-count="312">0</span><span class="text-muted text-[0.6rem] sm:text-xs tracking-[0.15em] uppercase mt-1.5 block font-body">Projects</span></div>
+                <div class="relative reveal-anim"><span class="stat-number block text-2xl sm:text-3xl md:text-5xl font-bold font-body" data-count="47">0</span><span class="text-muted text-[0.6rem] sm:text-xs tracking-[0.15em] uppercase mt-1.5 block font-body">Bridges Built</span></div>
+                <div class="relative reveal-anim"><span class="stat-number block text-2xl sm:text-3xl md:text-5xl font-bold font-body" data-count="26">0</span><span class="text-muted text-[0.6rem] sm:text-xs tracking-[0.15em] uppercase mt-1.5 block font-body">Years Active</span></div>
+                <div class="relative reveal-anim"><span class="stat-number block text-2xl sm:text-3xl md:text-5xl font-bold font-body" data-count="180">0</span><span class="text-muted text-[0.6rem] sm:text-xs tracking-[0.15em] uppercase mt-1.5 block font-body">Engineers</span></div>
+            </div>
+        </section>
+
+        <section id="services" class="px-4 sm:px-5 md:px-12 py-16 md:py-40 glass" aria-label="Services">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-10 md:mb-24 gap-3">
+                <div><span class="block mb-2 md:mb-4 reveal-anim text-accent text-[0.55rem] sm:text-[0.6rem] tracking-[0.2em] uppercase font-body">Engineering Disciplines</span><h2 class="font-heading text-xl sm:text-2xl md:text-5xl font-normal tracking-tight line-reveal">Our<br>Services</h2></div>
+            </div>
+            <div class="max-w-4xl">
+                <div class="service-row reveal-anim" data-cursor="view"><div class="flex items-center gap-3 md:gap-6"><span class="text-muted text-xs sm:text-sm font-mono flex-shrink-0 font-body">01</span><h3 class="font-heading text-sm sm:text-base md:text-xl font-normal tracking-wider">Structural Engineering</h3></div><span class="svc-arrow text-accent text-lg">&#8594;</span></div>
+                <div class="service-row reveal-anim" data-cursor="view"><div class="flex items-center gap-3 md:gap-6"><span class="text-muted text-xs sm:text-sm font-mono flex-shrink-0 font-body">02</span><h3 class="font-heading text-sm sm:text-base md:text-xl font-normal tracking-wider">Geotechnical Analysis</h3></div><span class="svc-arrow text-accent text-lg">&#8594;</span></div>
+                <div class="service-row reveal-anim" data-cursor="view"><div class="flex items-center gap-3 md:gap-6"><span class="text-muted text-xs sm:text-sm font-mono flex-shrink-0 font-body">03</span><h3 class="font-heading text-sm sm:text-base md:text-xl font-normal tracking-wider">Transportation Design</h3></div><span class="svc-arrow text-accent text-lg">&#8594;</span></div>
+                <div class="service-row reveal-anim" data-cursor="view"><div class="flex items-center gap-3 md:gap-6"><span class="text-muted text-xs sm:text-sm font-mono flex-shrink-0 font-body">04</span><h3 class="font-heading text-sm sm:text-base md:text-xl font-normal tracking-wider">Water Resources</h3></div><span class="svc-arrow text-accent text-lg">&#8594;</span></div>
+                <div class="service-row reveal-anim" data-cursor="view"><div class="flex items-center gap-3 md:gap-6"><span class="text-muted text-xs sm:text-sm font-mono flex-shrink-0 font-body">05</span><h3 class="font-heading text-sm sm:text-base md:text-xl font-normal tracking-wider">Environmental Engineering</h3></div><span class="svc-arrow text-accent text-lg">&#8594;</span></div>
+                <div class="service-row reveal-anim" data-cursor="view" style="border-bottom:none"><div class="flex items-center gap-3 md:gap-6"><span class="text-muted text-xs sm:text-sm font-mono flex-shrink-0 font-body">06</span><h3 class="font-heading text-sm sm:text-base md:text-xl font-normal tracking-wider">Construction Management</h3></div><span class="svc-arrow text-accent text-lg">&#8594;</span></div>
+            </div>
+        </section>
+
+        <section id="contact" class="border-t border-border glass-clear" aria-label="Contact form">
+            <div class="contact-form-grid grid grid-cols-1 md:grid-cols-2 min-h-screen">
+                <div class="flex items-center px-4 sm:px-6 md:px-10 lg:px-14 py-14 md:py-0 form-glass">
+                    <div class="w-full max-w-lg">
+                        <span class="block mb-3 reveal-anim text-accent text-[0.55rem] sm:text-[0.6rem] tracking-[0.2em] uppercase font-body">Start a Project</span>
+                        <h2 class="font-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl font-normal tracking-tight leading-[1.08] mb-2 md:mb-4 line-reveal">Get<br>Started</h2>
+                        <p class="text-muted text-xs sm:text-sm md:text-base leading-relaxed mb-6 md:mb-10 reveal-anim font-body font-light">Describe your infrastructure project and our engineering team will respond within 24 hours.</p>
+                        <form id="contactForm" novalidate autocomplete="off">
+                            <div class="mb-4 reveal-anim"><label for="formName" class="block text-[0.6rem] sm:text-xs tracking-[0.18em] uppercase text-muted mb-1.5 font-body font-medium">Full Name</label><input type="text" id="formName" name="name" class="form-input" placeholder="Jane Smith" required><p class="form-error" id="nameError">Please enter your name</p></div>
+                            <div class="mb-4 reveal-anim"><label for="formEmail" class="block text-[0.6rem] sm:text-xs tracking-[0.18em] uppercase text-muted mb-1.5 font-body font-medium">Email Address</label><input type="email" id="formEmail" name="email" class="form-input" placeholder="jane@company.com" required><p class="form-error" id="emailError">Please enter a valid email</p></div>
+                            <div class="mb-4 reveal-anim"><label for="formPhone" class="block text-[0.6rem] sm:text-xs tracking-[0.18em] uppercase text-muted mb-1.5 font-body font-medium">Phone <span class="text-border">(optional)</span></label><input type="tel" id="formPhone" name="phone" class="form-input" placeholder="+1 (555) 000-0000"></div>
+                            <div class="mb-6 md:mb-8 reveal-anim">
+                                <label class="block text-[0.6rem] sm:text-xs tracking-[0.18em] uppercase text-muted mb-2.5 font-body font-medium">Project Type</label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    <label class="flex items-center gap-2.5 cursor-pointer group"><input type="checkbox" name="service" value="structural" class="form-checkbox"><span class="form-checkbox-custom"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-xs sm:text-sm text-fg group-hover:text-accent transition-colors font-body">Structural</span></label>
+                                    <label class="flex items-center gap-2.5 cursor-pointer group"><input type="checkbox" name="service" value="transport" class="form-checkbox"><span class="form-checkbox-custom"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-xs sm:text-sm text-fg group-hover:text-accent transition-colors font-body">Transportation</span></label>
+                                    <label class="flex items-center gap-2.5 cursor-pointer group"><input type="checkbox" name="service" value="geotechnical" class="form-checkbox"><span class="form-checkbox-custom"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-xs sm:text-sm text-fg group-hover:text-accent transition-colors font-body">Geotechnical</span></label>
+                                    <label class="flex items-center gap-2.5 cursor-pointer group"><input type="checkbox" name="service" value="water" class="form-checkbox"><span class="form-checkbox-custom"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-xs sm:text-sm text-fg group-hover:text-accent transition-colors font-body">Water Resources</span></label>
+                                    <label class="flex items-center gap-2.5 cursor-pointer group"><input type="checkbox" name="service" value="environmental" class="form-checkbox"><span class="form-checkbox-custom"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-xs sm:text-sm text-fg group-hover:text-accent transition-colors font-body">Environmental</span></label>
+                                    <label class="flex items-center gap-2.5 cursor-pointer group"><input type="checkbox" name="service" value="construction" class="form-checkbox"><span class="form-checkbox-custom"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-xs sm:text-sm text-fg group-hover:text-accent transition-colors font-body">Construction Mgmt</span></label>
+                                </div>
+                            </div>
+                            <div class="reveal-anim"><button type="submit" class="form-submit" id="submitBtn" data-cursor="view"><span id="submitText">GET STARTED</span><span id="submitLoader" class="hidden"><span class="inline-block w-4 h-4 border-2 border-bg border-t-transparent rounded-full animate-spin"></span></span></button></div>
+                        </form>
+                    </div>
+                </div>
+                <div class="contact-image-col relative hidden md:block min-h-screen overflow-hidden">
+                    <img src="https://picsum.photos/seed/eng-office-plan/1000/1400" alt="Engineering office" class="lazy-img w-full h-full object-cover absolute inset-0" loading="lazy">
+                    <div class="contact-image-overlay"></div>
+                    <div class="absolute bottom-0 left-0 right-0 p-7 lg:p-12">
+                        <div class="flex items-start gap-3 mb-5"><svg width="20" height="28" viewBox="0 0 20 28" fill="none" class="flex-shrink-0 mt-0.5"><path d="M10 0C4.477 0 0 4.477 0 10c0 7.5 10 18 10 18s10-10.5 10-18C20 4.477 15.523 0 10 0z" fill="#c8ff00"/><circle cx="10" cy="10" r="4" fill="#0a0a0a"/></svg><div><p class="font-heading text-xs sm:text-sm font-normal tracking-wider leading-tight">SAIKAT Headquarters</p><p class="text-muted text-[0.65rem] sm:text-xs mt-0.5 font-body">London, United Kingdom</p></div></div>
+                        <p class="text-fg text-xs sm:text-sm leading-relaxed max-w-sm opacity-80 font-body font-light">Access our global network of 180+ engineers and specialists across structural, geotechnical, and environmental disciplines.</p>
+                        <div class="flex flex-wrap items-center gap-4 mt-5"><a href="mailto:info@SAIKAT.com" class="flink text-accent text-[0.6rem] tracking-[0.12em] uppercase font-body font-medium">info@SAIKAT.com</a><a href="tel:+442012345678" class="flink text-muted text-[0.6rem] tracking-[0.12em] uppercase hover:text-accent transition-colors font-body">+44 20 1234 5678</a></div>
+                    </div>
+                </div>
+            </div>
+            <div class="md:hidden px-4 sm:px-5 py-8 border-t border-border glass">
+                <div class="flex items-start gap-2.5 mb-4"><svg width="16" height="22" viewBox="0 0 20 28" fill="none" class="flex-shrink-0 mt-0.5"><path d="M10 0C4.477 0 0 4.477 0 10c0 7.5 10 18 10 18s10-10.5 10-18C20 4.477 15.523 0 10 0z" fill="#c8ff00"/><circle cx="10" cy="10" r="4" fill="#0a0a0a"/></svg><div><p class="font-heading text-[0.6rem] font-normal tracking-wider">SAIKAT HQ</p><p class="text-muted text-[0.6rem] mt-0.5 font-body">London, United Kingdom</p></div></div>
+                <p class="text-muted text-xs leading-relaxed mb-3 font-body font-light">180+ engineers across structural, geotechnical, and environmental disciplines.</p>
+                <div class="flex flex-wrap gap-3"><a href="mailto:info@SAIKAT.com" class="flink text-accent text-[0.6rem] tracking-[0.12em] uppercase font-body font-medium">info@SAIKAT.com</a><a href="tel:+442012345678" class="flink text-muted text-[0.6rem] tracking-[0.12em] uppercase font-body">+44 20 1234 5678</a></div>
+            </div>
+        </section>
+
+        <footer class="px-4 sm:px-5 md:px-12 py-10 md:py-20 border-t border-border glass" role="contentinfo">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 md:gap-8 mb-10 md:mb-16">
+                <div class="sm:col-span-2"><span class="font-heading text-sm md:text-base font-normal tracking-[0.12em] block mb-3 md:mb-6">SAIKAT</span><p class="text-muted text-xs sm:text-sm leading-relaxed max-w-sm font-body font-light">Civil engineering excellence since 1998. Designing and building infrastructure that connects communities and endures for generations.</p></div>
+                <div><span class="block mb-2 md:mb-4 text-accent text-[0.55rem] sm:text-[0.6rem] tracking-[0.2em] uppercase font-body">Navigation</span><nav class="space-y-2"><a href="#work" class="flink text-fg text-xs sm:text-sm hover:text-accent transition-colors block font-body">Projects</a><a href="#about" class="flink text-fg text-xs sm:text-sm hover:text-accent transition-colors block font-body">About</a><a href="#services" class="flink text-fg text-xs sm:text-sm hover:text-accent transition-colors block font-body">Services</a><a href="#contact" class="flink text-fg text-xs sm:text-sm hover:text-accent transition-colors block font-body">Contact</a></nav></div>
+                <div><span class="block mb-2 md:mb-4 text-accent text-[0.55rem] sm:text-[0.6rem] tracking-[0.2em] uppercase font-body">Connect</span><nav class="space-y-2"><a href="#" class="flink text-fg text-xs sm:text-sm hover:text-accent transition-colors block font-body">LinkedIn</a><a href="#" class="flink text-fg text-xs sm:text-sm hover:text-accent transition-colors block font-body">Instagram</a><a href="#" class="flink text-fg text-xs sm:text-sm hover:text-accent transition-colors block font-body">Twitter / X</a><a href="#" class="flink text-fg text-xs sm:text-sm hover:text-accent transition-colors block font-body">Careers</a></nav></div>
+            </div>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-5 md:pt-8 border-t border-border">
+                <span class="text-muted text-[0.55rem] sm:text-xs tracking-widest font-body">&copy; 2024 SAIKAT ENGINEERING. ALL RIGHTS RESERVED.</span>
+                <span class="text-muted text-[0.55rem] sm:text-xs tracking-widest font-body">LONDON, UK</span>
+            </div>
+        </footer>
+
+        <section class="footer-video-section" style="height:60vh" aria-label="Showreel video">
+            <div class="footer-video-overlay-top"></div>
+            <video id="footerVideo" autoplay muted loop playsinline preload="auto" style="width:100%;height:100%;object-fit:cover;display:block"></video>
+            <div class="footer-video-overlay"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-5 sm:p-8 md:p-14 z-10 pointer-events-none">
+                <span class="block text-accent text-[0.55rem] sm:text-[0.6rem] tracking-[0.2em] uppercase font-body mb-2 md:mb-4">Showreel</span>
+                <h2 class="font-heading text-xl sm:text-2xl md:text-5xl lg:text-6xl font-normal tracking-tight leading-[1.1] mb-3 md:mb-5">Building the<br>Impossible</h2>
+                <p class="text-muted text-xs sm:text-sm md:text-base leading-relaxed max-w-md font-body font-light opacity-80">A visual journey through our most ambitious engineering projects — from concept to completion.</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+    (function(){
+        'use strict';
+        /* ── Nav glass: transparent at top, frosted on scroll ── */
+        var nav=document.getElementById('siteNav');
+        var navScrolled=false;
+        function checkNavScroll(){
+            var shouldScroll=window.scrollY>60;
+            if(shouldScroll!==navScrolled){
+                navScrolled=shouldScroll;
+                nav.classList.toggle('scrolled',navScrolled);
+            }
+        }
+        window.addEventListener('scroll',checkNavScroll,{passive:true});
+        checkNavScroll();
+
+        function splitWords(el){const t=el.textContent.trim();el.innerHTML='';const w=t.split(/\s+/);w.forEach((wd,i)=>{const wr=document.createElement('span');wr.classList.add('word-reveal');const inn=document.createElement('span');inn.textContent=wd;wr.appendChild(inn);el.appendChild(wr);if(i<w.length-1)el.appendChild(document.createTextNode(' '))})}
+        function initLazy(){const o=new IntersectionObserver(e=>{e.forEach(en=>{if(en.isIntersecting){const i=en.target;i.onload=()=>i.classList.add('loaded');i.onerror=()=>i.classList.add('loaded');o.unobserve(i)}})},{rootMargin:'80px'});document.querySelectorAll('.lazy-img').forEach(i=>{if(i.complete)i.classList.add('loaded');else o.observe(i)})}
+        gsap.registerPlugin(ScrollTrigger);
+        const lenis=new Lenis({duration:1.2,easing:t=>Math.min(1,1.001-Math.pow(2,-10*t)),smooth:true,smoothTouch:false});
+        lenis.on('scroll',ScrollTrigger.update);gsap.ticker.add(time=>{lenis.raf(time*1000)});gsap.ticker.lagSmoothing(0);
+        const cD=document.getElementById('cursorDot'),cR=document.getElementById('cursorRing');let mX=0,mY=0,rX=0,rY=0;
+        const iT='ontouchstart' in window||navigator.maxTouchPoints>0;
+        if(!iT){document.addEventListener('mousemove',e=>{mX=e.clientX;mY=e.clientY;gsap.set(cD,{x:mX,y:mY})});(function aR(){rX+=(mX-rX)*.12;rY+=(mY-rY)*.12;gsap.set(cR,{x:rX,y:rY});requestAnimationFrame(aR)})();function aH(){cR.classList.add('hovering')}function rH(){cR.classList.remove('hovering')}document.querySelectorAll('a,button,[data-cursor="view"],.project-card,.service-row,.form-submit').forEach(el=>{el.addEventListener('mouseenter',aH);el.addEventListener('mouseleave',rH)})}
+        window._mouseX=0;window._mouseY=0;document.addEventListener('mousemove',e=>{window._mouseX=(e.clientX/innerWidth-.5)*2;window._mouseY=(e.clientY/innerHeight-.5)*2});
+        const pl=document.getElementById('preloader'),pB=document.getElementById('preloaderBar'),pC=document.getElementById('preloaderCount'),mC=document.getElementById('mainContent');
+        const pT=gsap.timeline({onComplete:()=>{pl.style.display='none';iA();window.dispatchEvent(new Event('preloader-done'))}});
+        pT.to('.preloader-word span',{y:0,duration:.8,ease:'power3.out'});
+        const lO={val:0};pT.to(lO,{val:100,duration:1.8,ease:'power2.inOut',onUpdate:()=>{const v=Math.round(lO.val);pB.style.width=v+'%';pC.textContent=v+'%'}},'-=.3');
+        pT.to('.preloader-word span',{y:'-110%',duration:.6,ease:'power3.in'},'+=.2');pT.to([pB,pC],{opacity:0,duration:.3},'-=.6');pT.to(pl,{yPercent:-100,duration:.8,ease:'power4.inOut'},'-=.3');pT.to(mC,{opacity:1,duration:.5},'-=.4');
+        function iA(){
+            initLazy();
+            gsap.to('.hero-line span',{y:0,duration:1.2,ease:'power4.out',stagger:.12});
+            gsap.to('.line-reveal > *',{y:0,duration:1,ease:'power3.out',delay:.8},'<');
+            document.querySelectorAll('.reveal-anim').forEach(el=>{gsap.from(el,{y:50,opacity:0,duration:1,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 90%',toggleActions:'play none none none'}})});
+            document.querySelectorAll('.line-reveal').forEach(el=>{if(el.closest('[aria-label="Hero"]'))return;gsap.to(el.children,{y:0,duration:1,ease:'power3.out',stagger:.08,scrollTrigger:{trigger:el,start:'top 90%',toggleActions:'play none none none'}})});
+            const mE=document.getElementById('manifestoText');splitWords(mE);gsap.to(mE.querySelectorAll('.word-reveal span'),{y:0,duration:.7,ease:'power3.out',stagger:.015,scrollTrigger:{trigger:mE,start:'top 82%',toggleActions:'play none none none'}});
+            document.querySelectorAll('.project-card').forEach(c=>{const i=c.querySelector('img');if(!i)return;gsap.to(i,{yPercent:-15,ease:'none',scrollTrigger:{trigger:c,start:'top bottom',end:'bottom top',scrub:1}})});
+            if(innerWidth>768){const hT=document.getElementById('hTrack');const sD=hT.scrollWidth-innerWidth;gsap.to(hT,{x:-sD,ease:'none',scrollTrigger:{trigger:'.horizontal-section',pin:true,scrub:1,end:'+='+sD,invalidateOnRefresh:true}})}
+            document.querySelectorAll('.stat-number').forEach(s=>{const t=parseInt(s.dataset.count,10);const o={val:0};gsap.to(o,{val:t,duration:2,ease:'power2.out',onUpdate:()=>{s.textContent=Math.round(o.val)+'+'},scrollTrigger:{trigger:s,start:'top 88%',toggleActions:'play none none none'}})});
+            gsap.from('footer > div, footer > .flex',{y:40,opacity:0,duration:.8,ease:'power3.out',stagger:.15,scrollTrigger:{trigger:'footer',start:'top 90%',toggleActions:'play none none none'}});
+            const fvs=document.querySelector('.footer-video-section');
+            if(fvs){
+                gsap.from(fvs.querySelector('h2'),{y:60,opacity:0,duration:1.2,ease:'power3.out',scrollTrigger:{trigger:fvs,start:'top 85%',toggleActions:'play none none none'}});
+                gsap.from(fvs.querySelectorAll('p, span'),{y:30,opacity:0,duration:1,ease:'power3.out',stagger:.1,delay:.2,scrollTrigger:{trigger:fvs,start:'top 85%',toggleActions:'play none none none'}});
+            }
+            ScrollTrigger.refresh();
+        }
+        const mO=document.getElementById('menuOverlay'),mL1=document.getElementById('menuLine1'),mL2=document.getElementById('menuLine2');let mOp=false;
+        window.toggleMenu=function(){mOp=!mOp;mO.classList.toggle('open',mOp);if(mOp){lenis.stop();mL1.style.transform='rotate(45deg) translateY(3px)';mL2.style.transform='rotate(-45deg) translateY(-3px)';mL2.style.width='1.5rem'}else{lenis.start();mL1.style.transform='';mL2.style.transform='';mL2.style.width=''}};
+        window.closeMenu=function(){if(mOp)toggleMenu()};
+        document.querySelectorAll('a[href^="#"]').forEach(l=>{l.addEventListener('click',e=>{const t=document.querySelector(l.getAttribute('href'));if(t){e.preventDefault();lenis.scrollTo(t,{offset:0,duration:1.5})}})});
+        const fm=document.getElementById('contactForm'),nI=document.getElementById('formName'),eI=document.getElementById('formEmail'),nE=document.getElementById('nameError'),eE=document.getElementById('emailError'),sB=document.getElementById('submitBtn'),sT=document.getElementById('submitText'),sL=document.getElementById('submitLoader'),tst=document.getElementById('formToast');
+        function shT(m,t){tst.textContent=m;tst.className='form-toast show '+(t==='success'?'success':'error-toast');setTimeout(()=>{tst.classList.remove('show')},4000)}
+        nI.addEventListener('input',()=>{nI.classList.remove('error');nE.classList.remove('visible')});
+        eI.addEventListener('input',()=>{eI.classList.remove('error');eE.classList.remove('visible')});
+        fm.addEventListener('submit',function(e){e.preventDefault();let v=true;if(!nI.value.trim()){nI.classList.add('error');nE.classList.add('visible');v=false}if(!eI.value.trim()||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eI.value.trim())){eI.classList.add('error');eE.classList.add('visible');v=false}if(!v){shT('Please fill in all required fields correctly','error');return}sB.disabled=true;sT.classList.add('hidden');sL.classList.remove('hidden');setTimeout(()=>{sB.disabled=false;sT.classList.remove('hidden');sL.classList.add('hidden');shT('Thank you! Our engineering team will respond within 24 hours.','success');fm.reset();document.querySelectorAll('.form-checkbox').forEach(c=>{c.checked=false})},2000)});
+
+        /* ── Footer Video: HLS autoplay, muted, infinite loop ── */
+        (function initFooterVideo(){
+            var video=document.getElementById('footerVideo');
+            if(!video)return;
+            var hlsSrc='https://stream.mux.com/9JXDljEVWYwWu01PUkAemafDugK89o01BR6zqJ3aS9u00A.m3u8';
+            if(typeof Hls!=='undefined'&&Hls.isSupported()){
+                var hls=new Hls({enableWorker:true,lowLatencyMode:false});
+                hls.loadSource(hlsSrc);hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED,function(){video.play().catch(function(){})});
+                hls.on(Hls.Events.ERROR,function(event,data){if(data.fatal){switch(data.type){case Hls.ErrorTypes.NETWORK_ERROR:hls.startLoad();break;case Hls.ErrorTypes.MEDIA_ERROR:hls.recoverMediaError();break;default:hls.destroy();break}}});
+            } else if(video.canPlayType('application/vnd.apple.mpegurl')){video.src=hlsSrc;video.play().catch(function(){})}
+            var played=false;
+            var obs=new IntersectionObserver(function(entries){entries.forEach(function(en){if(en.isIntersecting&&!played){played=true;video.play().catch(function(){});obs.unobserve(en.target)}})},{threshold:0.25});
+            obs.observe(video);
+            video.addEventListener('error',function(){setTimeout(function(){video.play().catch(function(){})},500)});
+            video.addEventListener('stalled',function(){setTimeout(function(){video.play().catch(function(){})},300)});
+            video.addEventListener('waiting',function(){setTimeout(function(){video.play().catch(function(){})},1000)});
+        })();
+    })();
+    </script>
+
+    <script type="module">
+    import * as THREE from 'three';
+    const gsap=window.gsap,ST=window.ScrollTrigger;gsap.registerPlugin(ST);
+    function init(){
+        const R=new THREE.WebGLRenderer({canvas:document.getElementById('bg3d'),alpha:true,antialias:true});
+        R.setPixelRatio(Math.min(devicePixelRatio,2));R.setSize(innerWidth,innerHeight);
+        const S=new THREE.Scene(),C=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,200);
+        C.position.set(0,2,24);
+        S.add(new THREE.AmbientLight(0x334455,0.15));
+        const ML=new THREE.PointLight(0x8899bb,0.35,80,2);ML.position.set(0,0,0);S.add(ML);
+        function gT(i,o,a){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d'),g=x.createRadialGradient(128,128,0,128,128,128);g.addColorStop(0,i);g.addColorStop(0.4,o);g.addColorStop(1,`rgba(0,0,0,${a||0})`);x.fillStyle=g;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(c)}
+        const N=3000,p=new Float32Array(N*3),s=new Float32Array(N),c=new Float32Array(N*3),ph=new Float32Array(N);
+        for(let i=0;i<N;i++){const t=Math.random()*6.283,u=Math.acos(2*Math.random()-1),r=30+Math.random()*50;p[i*3]=r*Math.sin(u)*Math.cos(t);p[i*3+1]=r*Math.sin(u)*Math.sin(t);p[i*3+2]=r*Math.cos(u);s[i]=.3+Math.random()*1.8;ph[i]=Math.random()*6.283;c[i*3]=.7+Math.random()*.3;c[i*3+1]=.75+Math.random()*.25;c[i*3+2]=.85+Math.random()*.15}
+        const sG=new THREE.BufferGeometry();sG.setAttribute('position',new THREE.BufferAttribute(p,3));sG.setAttribute('aStarSize',new THREE.BufferAttribute(s,1));sG.setAttribute('aStarColor',new THREE.BufferAttribute(c,3));sG.setAttribute('aStarPhase',new THREE.BufferAttribute(ph,1));
+        const sM=new THREE.ShaderMaterial({uniforms:{uTime:{value:0}},vertexShader:`attribute float aStarSize;attribute vec3 aStarColor;attribute float aStarPhase;uniform float uTime;varying vec3 vC;varying float vA;void main(){vC=aStarColor;float tw=sin(uTime*0.8+aStarPhase)*0.5+0.5;vA=0.25+tw*0.4;vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=max(1.,aStarSize*(140./max(1.,-mv.z))*(0.5+tw*0.3));gl_Position=projectionMatrix*mv;}`,fragmentShader:`varying vec3 vC;varying float vA;void main(){float d=length(gl_PointCoord-vec2(.5));if(d>.5)discard;gl_FragColor=vec4(vC,smoothstep(.5,.1,d)*vA);}`,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
+        S.add(new THREE.Points(sG,sM));
+        const moonGeo=new THREE.IcosahedronGeometry(2.5,10);
+        const moonMat=new THREE.ShaderMaterial({uniforms:{uTime:{value:0}},vertexShader:`varying vec2 vT;varying vec3 vN;varying vec3 vP;void main(){vT=uv;vN=normalize(normalMatrix*normal);vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`uniform float uTime;varying vec2 vT;varying vec3 vN;varying vec3 vP;vec2 h2(vec2 p){p=vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3)));return -1.+2.*fract(sin(p)*43758.5453);}float sn(vec2 p){const float K1=.366025404,K2=.211324865;vec2 i=floor(p+(p.x+p.y)*K1);vec2 a=p-i+(i.x+i.y)*K2;float m=step(a.y,a.x);vec2 o=vec2(m,1.-m);vec2 b=a-o+K2,c=a-1.+2.*K2;vec3 h=max(.5-vec3(dot(a,a),dot(b,b),dot(c,c)),0.);vec3 n=h*h*h*h*vec3(dot(a,h2(i)),dot(b,h2(i+o)),dot(c,h2(i+1.)));return dot(n,vec3(70.));}float fb(vec2 p){float f=0.,w=.5;for(int i=0;i<5;i++){f+=w*sn(p);p*=2.;w*=.5;}return f;}void main(){float n1=fb(vT*4.0+0.5)*.5+.5;float n2=fb(vT*8.0-1.0)*.3;float n3=fb(vT*16.0+2.0)*.15;float craters=smoothstep(0.35,0.5,n2)*0.3;vec3 base=vec3(0.42,0.40,0.38);vec3 light=vec3(0.52,0.50,0.47);vec3 dark=vec3(0.22,0.20,0.19);vec3 col=mix(dark,base,n1);col=mix(col,light,n3);col=mix(col,dark,craters);float diff=max(0.,dot(vN,normalize(vec3(0.5,0.7,0.5))));float term=smoothstep(0.0,0.4,diff);col*=0.35+term*0.65;col*=pow(max(0.,dot(vN,vec3(0,0,1))),0.6);float earth=smoothstep(0.1,0.0,diff);col+=vec3(0.03,0.04,0.06)*earth;gl_FragColor=vec4(col,1.0);}`});
+        const moon=new THREE.Mesh(moonGeo,moonMat);S.add(moon);
+        const mg1=new THREE.Sprite(new THREE.SpriteMaterial({map:gT('rgba(140,160,190,0.2)','rgba(100,120,150,0.06)','0'),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));mg1.scale.set(8,8,1);S.add(mg1);
+        const mg2=new THREE.Sprite(new THREE.SpriteMaterial({map:gT('rgba(100,120,150,0.08)','rgba(60,80,110,0.02)','0'),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));mg2.scale.set(14,14,1);S.add(mg2);
+        const moons=[];
+        function mkMoon(rad,orR,spd,col){const gr=new THREE.Group(),ge=new THREE.SphereGeometry(Math.max(.01,rad),16,16),ma=new THREE.MeshStandardMaterial({color:col,metalness:0,roughness:0.9}),me=new THREE.Mesh(ge,ma);gr.add(me);const og=new THREE.TorusGeometry(Math.max(.01,orR),0.008,8,96),om=new THREE.MeshBasicMaterial({color:0x334455,transparent:true,opacity:0.08}),ob=new THREE.Mesh(og,om);ob.rotation.x=Math.PI/2;S.add(ob);S.add(gr);return{group:gr,mesh:me,orbitR:orR,speed:spd,angle:Math.random()*6.283}}
+        moons.push(mkMoon(0.15,4.5,0.8,0x888888));moons.push(mkMoon(0.1,7,0.5,0x777777));moons.push(mkMoon(0.2,11,0.3,0x999999));
+        const soundRings=[];
+        for(let i=0;i<5;i++){const geo=new THREE.RingGeometry(Math.max(.01,3+i*2.5),Math.max(.02,3.15+i*2.5),80);const mat=new THREE.MeshBasicMaterial({color:0x8899aa,transparent:true,opacity:0.04,side:THREE.DoubleSide});const ring=new THREE.Mesh(geo,mat);ring.rotation.x=Math.PI*0.5;ring.position.y=-0.5;S.add(ring);soundRings.push({mesh:ring,baseScale:1,phase:i*1.2})}
+        const DC=400,dP=new Float32Array(DC*3),dS=new Float32Array(DC),dPh=new Float32Array(DC);
+        for(let i=0;i<DC;i++){dP[i*3]=(Math.random()-0.5)*40;dP[i*3+1]=(Math.random()-0.5)*20;dP[i*3+2]=(Math.random()-0.5)*40;dS[i]=0.2+Math.random()*0.8;dPh[i]=Math.random()*6.283}
+        const dGeo=new THREE.BufferGeometry();dGeo.setAttribute('position',new THREE.BufferAttribute(dP,3));dGeo.setAttribute('aStarSize',new THREE.BufferAttribute(dS,1));dGeo.setAttribute('aStarPhase',new THREE.BufferAttribute(dPh,1));
+        const dMat=new THREE.ShaderMaterial({uniforms:{uTime:{value:0}},vertexShader:`attribute float aStarSize;attribute float aStarPhase;uniform float uTime;varying float vA;void main(){float drift=sin(uTime*0.3+aStarPhase)*0.5+0.5;vA=0.1+drift*0.25;vec3 pos=position;pos.y+=sin(uTime*0.2+aStarPhase)*0.8;pos.x+=cos(uTime*0.15+aStarPhase*1.3)*0.5;vec4 mv=modelViewMatrix*vec4(pos,1.);gl_PointSize=max(1.,aStarSize*(80./max(1.,-mv.z)));gl_Position=projectionMatrix*mv;}`,fragmentShader:`varying float vA;void main(){float d=length(gl_PointCoord-vec2(.5));if(d>.5)discard;gl_FragColor=vec4(0.6,0.65,0.7,smoothstep(.5,.2,d)*vA);}`,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
+        const dust=new THREE.Points(dGeo,dMat);S.add(dust);
+        function mkNeb(r,g,b,x,y,z,sz,a){const cv=document.createElement('canvas');cv.width=cv.height=256;const x2=cv.getContext('2d'),gd=x2.createRadialGradient(128,128,0,128,128,128);gd.addColorStop(0,`rgba(${r},${g},${b},${a||0.06})`);gd.addColorStop(0.5,`rgba(${r},${g},${b},${(a||0.06)*0.3})`);gd.addColorStop(1,'rgba(0,0,0,0)');x2.fillStyle=gd;x2.fillRect(0,0,256,256);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));sp.position.set(x,y,z);sp.scale.set(sz,sz,1);S.add(sp)}
+        mkNeb(40,50,80,-30,8,-35,45,0.05);mkNeb(30,40,70,35,-10,-45,40,0.04);mkNeb(50,45,65,15,15,50,35,0.035);mkNeb(35,50,75,-25,-18,40,30,0.04);
+        const eG=new THREE.Group();const shadowGeo=new THREE.SphereGeometry(2.6,32,32);const shadowMat=new THREE.MeshBasicMaterial({color:0x000000});const shadowMesh=new THREE.Mesh(shadowGeo,shadowMat);eG.add(shadowMesh);
+        const alTex=gT('rgba(120,140,170,0.25)','rgba(80,100,130,0.05)','0');const alGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:alTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));alGlow.scale.set(9,9,1);alGlow.material.opacity=0;eG.add(alGlow);
+        const alTex2=gT('rgba(80,100,140,0.12)','rgba(50,70,100,0.02)','0');const alGlow2=new THREE.Sprite(new THREE.SpriteMaterial({map:alTex2,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));alGlow2.scale.set(14,14,1);alGlow2.material.opacity=0;eG.add(alGlow2);
+        eG.position.set(50,0,3);S.add(eG);
+        const cb={x:0,y:2,z:24};
+        const sTL=gsap.timeline({scrollTrigger:{trigger:'#mainContent',start:'top top',end:'bottom bottom',scrub:1.2}});
+        sTL.to(cb,{x:2,y:5,z:28,duration:.2,ease:'none'},0).to(cb,{x:8,y:7,z:20,duration:.2,ease:'none'},.25).to(cb,{x:14,y:4,z:10,duration:.15,ease:'none'},.45).to(cb,{x:6,y:1,z:5,duration:.1,ease:'none'},.6).to(cb,{x:0,y:1.5,z:24,duration:.08,ease:'none'},.68).to(eG.position,{x:0,duration:.07,ease:'power2.inOut'},.72).to(alGlow.material,{opacity:0.6,duration:.04},.75).to(alGlow2.material,{opacity:0.4,duration:.04},.75).to(ML,{intensity:0.12,duration:.05},.74).to(mg1.scale,{x:5,y:5,duration:.05},.74).to(mg2.scale,{x:8,y:8,duration:.05},.74).to({},{duration:.05}).to(eG.position,{x:-50,duration:.07,ease:'power2.in'},.84).to(alGlow.material,{opacity:0,duration:.04},.86).to(alGlow2.material,{opacity:0,duration:.04},.86).to(ML,{intensity:0.35,duration:.04},.86).to(mg1.scale,{x:8,y:8,duration:.04},.86).to(mg2.scale,{x:14,y:14,duration:.04},.86).to(cb,{x:0,y:12,z:38,duration:.14,ease:'none'},.9);
+        const eL=document.getElementById('eclipseLabel');
+        ST.create({trigger:'#mainContent',start:'top top',end:'bottom bottom',onUpdate:self=>{const pr=self.progress;eL.style.opacity=pr>.75&&pr<.84?Math.min(1,(pr-.75)/.02):Math.max(0,1-(pr<.75?(.75-pr)/.02:(pr-.84)/.02))}});
+        const ck=new THREE.Clock();
+        (function an(){requestAnimationFrame(an);const t=ck.getElapsedTime();moonMat.uniforms.uTime.value=t;sM.uniforms.uTime.value=t;dMat.uniforms.uTime.value=t;moon.rotation.y=t*0.03;moons.forEach(m=>{m.angle+=m.speed*0.002;m.group.position.set(Math.cos(m.angle)*m.orbitR,Math.sin(m.angle*0.3)*0.5,Math.sin(m.angle)*m.orbitR);m.mesh.rotation.y+=0.003});soundRings.forEach((r,i)=>{const cycle=((t*0.15+r.phase)%3)/3;const sc=1+cycle*2.5;r.mesh.scale.set(sc,sc,sc);r.mesh.material.opacity=0.04*(1-cycle)});const pulse=1+Math.sin(t*0.3)*0.008;moon.scale.set(pulse,pulse,pulse);const mx=window._mouseX||0,my=window._mouseY||0;C.position.x=cb.x+mx*1.0;C.position.y=cb.y-my*0.6;C.position.z=cb.z;C.lookAt(0,0,0);R.render(S,C)})();
+        addEventListener('resize',()=>{C.aspect=innerWidth/innerHeight;C.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)});
+    }
+    if(document.getElementById('preloader').style.display==='none')init();else addEventListener('preloader-done',init);
+    </script>
+</body>
+</html>
